@@ -8,6 +8,7 @@
  *    <id>[] outTransitions
  * }[]
  */
+import parse from './CTLParser';
 
 var _equal = function(a, b) {
 	return !_.without(a, b).length &&
@@ -129,7 +130,7 @@ Checker.prototype.SAT_EG = function(formula) {
 
 export default function(model, formula, fairness) {
 	if(typeof(formula) === 'string') {
-		formula = CTL.parse(formula);
+		formula = parse(formula);
 	}
 	var checker = new Checker();
 	return checker.check(model, formula, fairness);

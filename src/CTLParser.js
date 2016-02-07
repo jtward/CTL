@@ -1,3 +1,6 @@
+import {includes, assign} from 'lodash';
+import tokenize from './CTLTokenizer';
+
 var SyntaxError = function(message) {
 	return {
 		'name': 'SyntaxError',
@@ -38,11 +41,11 @@ var _itself = function() {
 
 var CTLOperators = ['A', 'E'];
 var LTLOperators = ['G', 'F', 'X', 'U', 'W', 'R'];
-var isCTLOperator = function(/*String*/ value) {
-	return _.indexOf(CTLOperators, value) !== -1;
+var isCTLOperator = function(value) {
+	return includes(CTLOperators, value);
 };
-var isLTLOperator = function(/*String*/ value) {
-	return _.indexOf(LTLOperators, value) !== -1;
+var isLTLOperator = function(value) {
+	return includes(LTLOperators, value);
 };
 var combineOps = function(tree) {
 	// Combine CTL-LTL operator pairs into single tokens.
@@ -343,7 +346,7 @@ Parser.prototype._advance = function (id) {
 			a + ', value: ' + 
 			v +' }\'.');
 	}
-	this._token = _.extend({}, o);
+	this._token = assign({}, o);
 	this._token.value = v;
 	return this._token;
 };
@@ -440,7 +443,7 @@ Parser.prototype.parse = function(toks) {
 
 export default function(data) {
 	if(typeof(data) === 'string') {
-		data = CTL.tokenize(data);
+		data = tokenize(data);
 	}
 	var parser = new Parser();
 	return sanitize(translate(combineOps(parser.parse(data))));
