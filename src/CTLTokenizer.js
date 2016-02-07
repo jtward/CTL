@@ -26,6 +26,8 @@ var isOp = function(character) {
 	return opRegex.test(character);
 };
 
+var whitespaceRegex = /^\s$/;
+
 export default function(input) {
 	var c = 0, // The current character.
 		from = 0, // The index of the start of the token.
@@ -45,7 +47,7 @@ export default function(input) {
 	while(c) {
 		from = i;
 		// Ignore whitespace.
-		if (c <= ' ') {
+		if (whitespaceRegex.test(c)) {
 			i += 1;
 			c = input.charAt(i);
 		}
