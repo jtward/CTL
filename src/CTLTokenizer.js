@@ -114,6 +114,7 @@ export default function(input) {
 		else if(c === dash) {
 			str = c;
 			i += 1;
+			c = input.charAt(i);
 			if(c === rightAngleBracket) {
 				str += c;
 				i += 1;
