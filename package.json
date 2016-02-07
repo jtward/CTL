@@ -7,7 +7,7 @@
     "test": "test"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "mocha --compilers js:babel-register"
   },
   "repository": {
     "type": "git",
@@ -18,5 +18,9 @@
   "bugs": {
     "url": "https://github.com/jtward/CTL/issues"
   },
-  "homepage": "https://github.com/jtward/CTL#readme"
+  "homepage": "https://github.com/jtward/CTL#readme",
+  "devDependencies": {
+    "babel-register": "^6.4.3",
+    "mocha": "^2.4.5"
+  }
 }
