@@ -1,3 +1,5 @@
+import {includes} from 'lodash';
+
 var Token = function(type, value) {
 	return {
 		'type': type,
@@ -82,7 +84,7 @@ export default function(input) {
 			str = '\\';
 			i += 1;
 			c = input.charAt(i);
-			if(_.indexOf(specials, c) !== -1) {
+			if(includes(specials, c) !== -1) {
 				str += c;
 				i += 1;
 				result.push(Token('atom', str));
