@@ -86,7 +86,7 @@ export default function(input) {
 			str = '\\';
 			i += 1;
 			c = input.charAt(i);
-			if(includes(specials, c) !== -1) {
+			if(includes(specials, c)) {
 				str += c;
 				i += 1;
 				result.push(Token('atom', str));
