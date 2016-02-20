@@ -299,7 +299,7 @@ var Parser = function() {
 		this[0] = context._expression(50);
 		return this;
 	});
-	this._prefix('(', function () {
+	this._prefix('(', function() {
 		var e = context._expression(0);
 		context._advance(')');
 		return e;
@@ -308,7 +308,7 @@ var Parser = function() {
 
 
 
-Parser.prototype._advance = function (id) {
+Parser.prototype._advance = function(id) {
 	var a, o, t, v;
 	if (id && this._token.id !== id) {
 		var expString = '\'' + id + '\'',
@@ -351,7 +351,7 @@ Parser.prototype._advance = function (id) {
 	return this._token;
 };
 
-Parser.prototype._expression = function (rbp) {
+Parser.prototype._expression = function(rbp) {
 	var left;
 	var t = this._token;
 	this._advance();
@@ -409,7 +409,7 @@ Parser.prototype._infix = function(id, bp, led) {
 	return s;
 };
 
-Parser.prototype._infixr = function (id, bp, led) {
+Parser.prototype._infixr = function(id, bp, led) {
 	var s = this._symbol(id, bp);
 	s.args = 2;
 	var context = this;
@@ -425,7 +425,7 @@ Parser.prototype._prefix = function(id, nud) {
 	var s = this._symbol(id);
 	s.args = 1;
 	var context = this;
-	s.nud = nud || function () {
+	s.nud = nud || function() {
 		this[0] = context._expression(70);
 		return this;
 	};
