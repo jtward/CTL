@@ -8,65 +8,43 @@
  *    <id>[] outTransitions
  * }[]
  */
-import { filter, indexOf, intersection, map, some, union, without } from 'lodash';
+import { includes, intersection, isEmpty, filter, map, some, union, without, xor } from 'lodash';
 import parse from './CTLParser';
 
 
-var _equal = function(a, b) {
-	return !without(a, b).length &&
-		!without(b, a).length;
+const _equal = function(a, b) {
+	return isEmpty(xor(a, b));
 };
-	
-var Checker = function() {
+
+const Checker = function() {
 	this._S = [];
 };
 
 Checker.prototype.check = function(model, formula) {
 	this._S = model;
-	return some(this.SAT(formula), 
-		function(state) {
-			return state.isInitial;
-		});
+	return some(this.SAT(formula), function(state) {
+		return state.isInitial;
+	});
 };
 
 Checker.prototype.SAT = function(formula) {
-	var subset, i;
-	if (!formula.args) {
-		if (formula.value === '\\T') {
-			//true is true for all states
-			return this._S;
-		}
-		else if (formula.value === '\\F') {
-			//false is true in no states
-			return [];
-		}
-		else {
-			subset = [], i = this._S.length;
-			while(i--) {
-				if (indexOf(this._S[i].properties, formula.value) !== -1) {
-					subset.push(this._S[i]);
-				}
-			}
-			return subset;
-		}
-	}
-	else {
-		switch(formula.value) {
+	if (formula.arity) {
+		switch (formula.value) {
 		case '!':
 			return without(
-				this._S, 
+				this._S,
 				this.SAT(formula[0]));
 		case '|':
 			return union(
-				this.SAT(formula[0]), 
+				this.SAT(formula[0]),
 				this.SAT(formula[1]));
 		case '&':
 			return intersection(
-				this.SAT(formula[0]), 
+				this.SAT(formula[0]),
 				this.SAT(formula[1]));
 		case '->':
 			return union(
-				intersection(this.SAT(formula[0]), 
+				intersection(this.SAT(formula[0]),
 					this.SAT(formula[1])),
 				without(this._S, 
 					this.SAT(formula[0])));
@@ -77,11 +55,26 @@ Checker.prototype.SAT = function(formula) {
 		case 'EG':
 			return this.SAT_EG(formula[0]);
 		default:
-			throw { 
-				name: 'SystemError', 
-				message: 'Expected an operator but found \''+
-					formula.value+'\'.' 
+			throw {
+				name: 'SystemError',
+				message: 'Expected an operator but found \'' + formula.value + '\'.'
 			};
+		}
+	}
+	else {
+		if (formula.value === '\\T') {
+			//true is true for all states
+			return this._S;
+		}
+		else if (formula.value === '\\F') {
+			//false is true in no states
+			return [];
+		}
+		else {
+			// return the set of states which include the given atom
+			return filter(this._S, function(state) {
+				return includes(state.properties, formula.value);
+			});
 		}
 	}
 };
@@ -89,14 +82,11 @@ Checker.prototype.SAT = function(formula) {
 Checker.prototype.preE = function(Y) {
 	// return the set of states that make a transition 
 	// to a state in Y
-	var YIDs = map(Y, function(el) {
-		return el.id;
-	});
+	const YIDs = map(Y, 'id');
 
-	return filter(this._S,
-		function(el) {
-			return intersection(el.outTransitions, YIDs).length > 0;
-		});
+	return filter(this._S, function(el) {
+		return !isEmpty(intersection(el.outTransitions, YIDs));
+	});
 };
 	
 Checker.prototype.SAT_EX = function(formula) {
@@ -108,25 +98,25 @@ Checker.prototype.SAT_EU = function(first, second) {
 	// increase the length of the path between a state in 
 	// SAT(first) and a state in SAT(second) until there 
 	// is no change.
-	var W, X, Y;
-	W = this.SAT(first);
-	X = this._S;
-	Y = this.SAT(second);
-	while (!_equal(X, Y)) {
-		X = Y;
-		Y = union(Y, intersection(W, this.preE(Y)));
+	const W = this.SAT(first);
+	let X = this._S;
+	let Y = this.SAT(second);
+
+	while(!_equal(X, Y)) {
+		[X, Y] = [Y, union(Y, intersection(W, this.preE(Y)))];
 	}
+
 	return Y;
 };
 
 Checker.prototype.SAT_EG = function(formula) {
-	var X, Y;
-	Y = this.SAT(formula);
 	X = [];
-	while(!_equal(X, Y)) {
-		X = Y;
-		Y = intersection(Y, this.preE(Y));
+	Y = this.SAT(formula);
+
+	while (!_equal(X, Y)) {
+		[X, Y] = [Y, intersection(Y, this.preE(Y))];
 	}
+
 	return Y;
 };
 

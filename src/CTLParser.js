@@ -1,56 +1,54 @@
-import {includes, assign} from 'lodash';
+import { includes, assign } from 'lodash';
 import tokenize from './CTLTokenizer';
 
-var SyntaxError = function(message) {
+const SyntaxError = function(message) {
 	return {
 		'name': 'SyntaxError',
 		'message': message
 	};
 };
 
-var _UnaryOperator = function(value, l) {
+const UnaryOperator = function(value, l) {
 	return {
 		0: l,
 		value: value,
-		args: 1
+		arity: 1
 	};
 };
 
-var _BinaryOperator = function(value, l, r) {
+const BinaryOperator = function(value, l, r) {
 	return {
 		0: l,
 		1: r,
 		value: value,
-		args: 2
+		arity: 2
 	};
 };
 
-var TRUE = {
-	args: 0,
+const TRUE = {
+	arity: 0,
 	value: '\\T'
 };
 
-var _noarg = function() {
-	throw SyntaxError('Missing argument to operator ' +
-		(this.value ? this.value : '') + '.');
+const noarg = function() {
+	throw SyntaxError(`Missing argument to operator '${(this.value ? this.value : '')}'.`);
 };
 
-var _itself = function() {
+const itself = function() {
 	return this;
 };
 
-var CTLOperators = ['A', 'E'];
-var LTLOperators = ['G', 'F', 'X', 'U', 'W', 'R'];
-var isCTLOperator = function(value) {
+const CTLOperators = ['A', 'E'];
+const LTLOperators = ['G', 'F', 'X', 'U', 'W', 'R'];
+const isCTLOperator = function(value) {
 	return includes(CTLOperators, value);
 };
-var isLTLOperator = function(value) {
+const isLTLOperator = function(value) {
 	return includes(LTLOperators, value);
 };
-var combineOps = function(tree) {
+const combineOps = function(tree) {
 	// Combine CTL-LTL operator pairs into single tokens.
 	// Throw a syntax error if the pairs are not matched.
-	var i;
 	if (isCTLOperator(tree.value)) {
 		tree.value = tree.value + tree[0].value;
 		if (tree[0][1] !== undefined) {
@@ -59,23 +57,18 @@ var combineOps = function(tree) {
 		tree[0] = tree[0][0];
 	}
 	else if (isLTLOperator(tree.value)) {
-		throw SyntaxError('Expected a CTL operator but found \'' +
-			tree.value + '\'.');
+		throw SyntaxError(`Expected a CTL operator but found '${tree.value}'.`);
 	}
 
-	i = tree.args;
-	while(i--) {
+	let i = tree.arity;
+	while (i--) {
 		combineOps(tree[i]);
 	}
 	return tree;
 };
 
-var translate = function(tree) { //THROWS SystemError
-	var a, b;
-	if (!tree.args) {
-		return tree;
-	}
-	else {
+const translate = function(tree) { //THROWS SystemError
+	if (tree.arity) {
 		switch(tree.value) {
 		case 'EX':
 		case 'EG':
@@ -88,7 +81,7 @@ var translate = function(tree) { //THROWS SystemError
 		case 'EF':
 			//EF a  =  EU(TRUE, a)
 			tree[0] = translate(tree[0]);
-			a = tree[0];
+			const a = tree[0];
 			tree.value = 'EU';
 			tree[0] = TRUE;
 			tree[1] = a;
@@ -98,17 +91,15 @@ var translate = function(tree) { //THROWS SystemError
 			//          =  EU(b, a&b) & !EG(b)
 			tree[0] = translate(tree[0]);
 			tree[1] = translate(tree[1]);
-			a = tree[0];
-			b = tree[1];
-			tree = _BinaryOperator(
+			tree = BinaryOperator(
 				'&', 
-				_BinaryOperator(
+				BinaryOperator(
 					'EU',
 					b,
-					_BinaryOperator('&', a, b)),
-				_UnaryOperator(
+					BinaryOperator('&', tree[0], tree[1])),
+				UnaryOperator(
 					'!',
-					_UnaryOperator('EG', b)));
+					UnaryOperator('EG', tree[1])));
 			break;
 		case 'EW':
 			//EW(a, b)  =  !ER(b, a|b)
@@ -116,94 +107,77 @@ var translate = function(tree) { //THROWS SystemError
 			//          =  EU(a|b, b) & !EG(a|b)
 			tree[0] = translate(tree[0]);
 			tree[1] = translate(tree[1]);
-			a = tree[0];
-			b = tree[1];
-			tree = _BinaryOperator(
+			tree = BinaryOperator(
 				'&',
-				_BinaryOperator(
+				BinaryOperator(
 					'EU',
-					_BinaryOperator('|', a, b),
+					BinaryOperator('|', tree[0], tree[1]),
 					b),
-				_UnaryOperator(
+				UnaryOperator(
 					'!',
-					_UnaryOperator(
+					UnaryOperator(
 						'EG',
-						_BinaryOperator('|', a, b))));
+						BinaryOperator('|', tree[0], tree[1]))));
 			break;
 		case 'AX':
 			//AX(a)  =  !EX(!a)
 			//tree.first = this.translate(tree.first);
 			// do the negation before translating to catch double negations
-			a = translate(
-				_UnaryOperator('!', tree[0]));
-			tree = _UnaryOperator(
-				'!',
-				_UnaryOperator('EX', a));
+			const a = translate(UnaryOperator('!', tree[0]));
+			tree = UnaryOperator('!', UnaryOperator('EX', a));
 			break;
 		case 'AG':
 			//AG(a)  =  !EF(!a)
 			//       =  !EU(T, !a)
 			// do the negation before translating to catch double negations
-			a = translate(
-				_UnaryOperator('!', tree[0]));
-			tree = _UnaryOperator(
+			tree = UnaryOperator(
 				'!',
-				_BinaryOperator(
-					'EU',
-					TRUE,
-					a));
+				BinaryOperator('EU', TRUE, translate(UnaryOperator('!', tree[0]))));
 			break;
 		case 'AF':
 			//AF(a)  =  !EG(!a)
-			a = translate(
-				_UnaryOperator('!', tree[0]));
-			tree = _UnaryOperator(
+			tree = UnaryOperator(
 				'!',
-				_UnaryOperator('EG', a));
+				UnaryOperator('EG', translate(UnaryOperator('!', tree[0]))));
 			break;
 		case 'AU':
 			//AU(a, b)  =  !EU(!b, !a & !b) | EG(!b)
-			a = translate(
-				_UnaryOperator('!', tree[0]));
-			b = translate(
-				_UnaryOperator('!', tree[1]));
-			tree = _BinaryOperator(
+			const a = translate(UnaryOperator('!', tree[0]));
+			const b = translate(UnaryOperator('!', tree[1]));
+			tree = BinaryOperator(
 				'|',
-				_UnaryOperator(
+				UnaryOperator(
 					'!',
-					_BinaryOperator(
+					BinaryOperator(
 						'EU',
 						b,
-						_BinaryOperator('&', a, b))),
-				_UnaryOperator('EG', b));
+						BinaryOperator('&', a, b))),
+				UnaryOperator('EG', b));
 			break;
 		case 'AR':
 			//AU(a, b)  =  !EU(!a, !b)
-			a = translate(
-				_UnaryOperator('!', tree[0]));
-			b = translate(
-				_UnaryOperator('!', tree[1]));
-			tree = _UnaryOperator(
+			tree = UnaryOperator(
 				'!',
-				_BinaryOperator('EU', a, b));
+				BinaryOperator(
+					'EU',
+					translate(UnaryOperator('!', tree[0])),
+					translate(UnaryOperator('!', tree[1]))));
 			break;
 		case 'AW':
 			//AW(a, b)  =  !EU(!b, !a & !b)
-			a = translate(
-				_UnaryOperator('!', tree[0]));
-			b = translate(
-				_UnaryOperator('!', tree[1]));
-			tree = _UnaryOperator(
+			a = translate(UnaryOperator('!', tree[0]));
+			b = translate(UnaryOperator('!', tree[1]));
+			tree = UnaryOperator(
 				'!',
-				_BinaryOperator(
+				BinaryOperator(
 					'EU',
 					b,
-					_BinaryOperator('&', a, b)));
+					BinaryOperator('&', a, b)));
 			break;
 		case '!':
 			if (tree[0].value === '!') {
-				//remove any number of double negations.
-				while(tree.value === '!' &&
+				// remove any number of double negations.
+				while (tree.value === '!' &&
 			  		tree[0].value === '!') {
 					tree = tree[0][0];
 				}
@@ -220,21 +194,19 @@ var translate = function(tree) { //THROWS SystemError
 			tree[1] = translate(tree[1]);
 			break;
 		default:
-			throw SyntaxError('Expected an operator but found \''+
-				tree.value+'\'.');
+			throw SyntaxError(`Expected an operator but found '${tree.value}'.`);
 		}
-		return tree;
 	}
+	return tree;
 };
 
-var sanitize = function(ast) {
-	var p;
-	for (p in ast) {
+const sanitize = function(ast) {
+	for (let p in ast) {
 		if (ast.hasOwnProperty(p)) {
-			if (!isNaN(parseInt(p))) {
+			if (!isNaN(parseInt(p, 10))) {
 				sanitize(ast[p]);
 			}
-			else if (p !== 'value' && p !== 'args') {
+			else if (p !== 'value' && p !== 'arity') {
 				delete ast[p];
 			}
 		}
@@ -242,202 +214,178 @@ var sanitize = function(ast) {
 	return ast;
 };
 
+const prefixOperatorNudForParser = (parser) => {
+	return function() {
+		this[0] = parser.expression(50);
+		return this;
+	};
+};
 
-var Parser = function() {
-	var context = this;
-
-	this._token = null;
-	this._tokens = null;
-	this._token_nr = 0;
-	this._symbol_table = {};
-	this._symbol('(end)');
-	this._symbol(')');
-
-	this._symbol('(atom)').nud = _itself;
-
-	this._infixr('->', 10);
-
-	this._infixr('&', 20);
-	this._infixr('|', 20);
-
-	this._prefix('E', function() {
-		this[0] = context._expression(40);
+const quantifierNudForParser = (parser) => {
+	return function() {
+		this[0] = parser.expression(40);
 		if (!isLTLOperator(this[0].value)) {
-			throw SyntaxError('Expected an LTL operator ' + 
-				'but found \'' +
-				this[0].value + '\'.');
+			throw SyntaxError(`Expected an LTL operator but found '${this[0].value}'.`);
 		}
 		return this;
-	});
-	this._prefix('A', function() {
-		this[0] = context._expression(40);
-		if (!isLTLOperator(this[0].value)) {
-			throw SyntaxError('Expected an LTL operator ' +
-				'but found \''+this[0].value +
-				'\'.');
-		}
-		return this;
-	});
+	};
+};
 
-	this._infixr('U', 40);
-	this._infixr('R', 40);
-	this._infixr('W', 40);
-
-	this._prefix('!', function() {
-		this[0] = context._expression(50);
-		return this;
-	});
-	this._prefix('F', function() {
-		this[0] = context._expression(50);
-		return this;
-	});
-	this._prefix('G', function() {
-		this[0] = context._expression(50);
-		return this;
-	});
-	this._prefix('X', function() {
-		this[0] = context._expression(50);
-		return this;
-	});
-	this._prefix('(', function() {
-		var e = context._expression(0);
-		context._advance(')');
+const parenNudForParser = (parser) => {
+	return function() {
+		const e = parser.expression(0);
+		parser.advance(')');
 		return e;
+	};
+};
+
+const Parser = function() {
+	const parser = this;
+
+	this.token = null;
+	this.tokens = null;
+	this.tokenIndex = 0;
+	this.symbolTable = {};
+	this.symbol({ id: '(end)' });
+	this.symbol({ id: ')' });
+
+	this.symbol({
+		id: '(atom)',
+		nud: itself
 	});
+
+	this.rightAssociativeInfixOperator({ id: '->', leftBindingPower: 10 });
+	this.rightAssociativeInfixOperator({ id: '&', leftBindingPower: 20 });
+	this.rightAssociativeInfixOperator({ id: '|', leftBindingPower: 20 });
+	this.rightAssociativeInfixOperator({ id: 'U', leftBindingPower: 40 });
+	this.rightAssociativeInfixOperator({ id: 'R', leftBindingPower: 40});
+	this.rightAssociativeInfixOperator({ id: 'W', leftBindingPower: 40 });
+
+	const quantifierNud = quantifierNudForParser(this);
+	this.prefixOperator({ id: 'E', nud: quantifierNud });
+	this.prefixOperator({ id: 'A', nud: quantifierNud });
+
+	const prefixOperatorNud = prefixOperatorNudForParser(this);
+	this.prefixOperator({ id: '!', nud: prefixOperatorNud });
+	this.prefixOperator({ id: 'F', nud: prefixOperatorNud });
+	this.prefixOperator({ id: 'G', nud: prefixOperatorNud });
+	this.prefixOperator({ id: 'X', nud: prefixOperatorNud });
+
+	const parenNud = parenNudForParser(this);
+	this.prefixOperator({ id: '(', nud: parenNud });
 };
 
 
+Parser.prototype.advance = function(id) {
+	if (id && this.token.id !== id) {
+		const expString = `' ${id} '`;
+		const foundString = `' ${this.token.value} '`;
 
-Parser.prototype._advance = function(id) {
-	var a, o, t, v;
-	if (id && this._token.id !== id) {
-		var expString = '\'' + id + '\'',
-			foundString = '\'' + this._token.value+ '\'';
 		if (id === '(end)') {
 			expString = 'end of input';
 		}
-		else if (this._token.value === '(end)') {
+		else if (this.token.value === '(end)') {
 			foundString = 'end of input';
 		}
-		throw SyntaxError('Expected ' + expString +
-			' but found ' + foundString + '.');
+
+		throw SyntaxError(`Expected ${expString} but found ${foundString}`);
 	}
-	if (this._token_nr >= this._tokens.length) {
-		this._token = this._symbol_table['(end)'];
+
+	if (this.tokenIndex >= this.tokens.length) {
+		this.token = this.symbolTable['(end)'];
 		return null;
 	}
-	t = this._tokens[this._token_nr];
-	this._token_nr += 1;
 
-	v = t.value;
-	a = t.type;
+	const t = this.tokens[this.tokenIndex];
+	const v = t.value;
+	const a = t.type;
+	let o;
+
+	this.tokenIndex += 1;
+
 	if (a === 'atom') {
-		o = this._symbol_table['(atom)'];
-		a = 'atom';
-	} else if (a === 'operator') {
-		o = this._symbol_table[v];
+		o = this.symbolTable['(atom)'];
+	}
+	else if (a === 'operator') {
+		o = this.symbolTable[v];
 		if (!o) {
-			throw SyntaxError('Expected an operator ' + 
-				'but found \'' + v + '\'.');
+			throw SyntaxError(`Expected an operator but found '${v}'.`);
 		}
 	} else {
-		throw SyntaxError('Expected a token ' +
-			'but found \'{ type: ' +
-			a + ', value: ' + 
-			v +' }\'.');
+		throw SyntaxError(`Expected a token but found '{ type: ${a}, value: ${v} }'.`);
 	}
-	this._token = assign({}, o);
-	this._token.value = v;
-	return this._token;
+
+	this.token = assign({}, o);
+	this.token.value = v;
+	return this.token;
 };
 
-Parser.prototype._expression = function(rbp) {
-	var left;
-	var t = this._token;
-	this._advance();
-	if (t.value === '(end)') {
-		throw SyntaxError('Unexpected end of input');
+Parser.prototype.expression = function(rightBindingPower) {
+	let token = this.token;
+	this.advance();
+
+	if (token.value === '(end)') {
+		throw SyntaxError('Unexpected end of input.');
 	}
-	left = t.nud();
-	while (rbp < this._token.lbp) {
-		t = this._token;
-		this._advance();
-		left = t.led(left);
+
+	let leftTree = token.nud();
+
+	while (rightBindingPower < this.token.leftBindingPower) {
+		let token = this.token;
+		this.advance();
+		leftTree = token.led(leftTree);
 	}
-	return left;
+
+	return leftTree;
 };
 
-Parser.prototype._symbol = function(id, bp) {
-	var s = this._symbol_table[id];
-	bp = bp || 0;
-	if (s) {
-		if (bp >= s.lbp) {
-			s.lbp = bp;
-		}
+Parser.prototype.symbol = function({ id = undefined, value = id, leftBindingPower = 0, arity = 0, nud = noarg, led = noarg }) {
+	const existingSymbol = this.symbolTable[id];
+	if (existingSymbol) {
+		s.leftBindingPower = Math.max(leftBindingPower, s.leftBindingPower);
+		return existingSymbol;
 	}
 	else {
-		s = {};
-		s.nud = s.led = _noarg;
-		s.id = s.value = id;
-		s.lbp = bp;
-		this._symbol_table[id] = s;
+		return this.symbolTable[id] = {
+			id,
+			leftBindingPower,
+			arity,
+			nud,
+			led,
+			value
+		};
 	}
-	return s;
 };
 
-Parser.prototype._constant = function(s, v) {
-	var x = this._symbol(s);
-	x.args = 0;
-	var context = this;
-	x.nud = function() {
-		this.value = context._symbol_table[this.id].value;
-		return this;
-	};
-	x.value = v;
-	return x;
+Parser.prototype.rightAssociativeInfixOperator = function({ id = '', leftBindingPower = 0 }) {
+	const parser = this;
+	return this.symbol({
+		id,
+		leftBindingPower,
+		arity: 2,
+		led: function(left) {
+			this[0] = left;
+			this[1] = parser.expression(leftBindingPower - 1);
+			return this;
+		}
+	});
 };
 
-Parser.prototype._infix = function(id, bp, led) {
-	var s = this._symbol(id, bp);
-	s.args = 2;
-	var context = this;
-	s.led = led || function(left) {
-		this[0] = left;
-		this[1] = context._expression(bp);
-		return this;
-	};
-	return s;
+Parser.prototype.prefixOperator = function({ id = '', nud = undefined }) {
+	return this.symbol({
+		id,
+		bindingPower: 0,
+		arity: 1,
+		nud
+	});
 };
 
-Parser.prototype._infixr = function(id, bp, led) {
-	var s = this._symbol(id, bp);
-	s.args = 2;
-	var context = this;
-	s.led = led || function(left) {
-		this[0] = left;
-		this[1] = context._expression(bp - 1);
-		return this;
-	};
-	return s;
-};
-
-Parser.prototype._prefix = function(id, nud) {
-	var s = this._symbol(id);
-	s.args = 1;
-	var context = this;
-	s.nud = nud || function() {
-		this[0] = context._expression(70);
-		return this;
-	};
-	return s;
-};
-
-Parser.prototype.parse = function(toks) {
-	this._tokens = toks;
-	this._token_nr = 0;
-	this._advance();
-	var s = this._expression(0);
-	this._advance('(end)');
+Parser.prototype.parse = function(tokens) {
+	this.tokens = tokens;
+	this.tokenIndex = 0;
+	this.advance();
+	const s = this.expression(0);
+	this.advance('(end)');
 	return s;
 };
 
