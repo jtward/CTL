@@ -8,7 +8,8 @@
   },
   "scripts": {
     "test": "mocha --compilers js:babel-register",
-    "compile": "browserify src/CTL.js -o lib/CTL.js -t [ babelify --presets [ es2015 ] ]"
+    "compile": "browserify src/CTL.js -o lib/CTL.js -t [ babelify --presets [ es2015 ] ]",
+    "lint": "eslint src test"
   },
   "repository": {
     "type": "git",
@@ -29,7 +30,7 @@
     "babel-register": "^6.4.3",
     "babelify": "^7.2.0",
     "browserify": "^13.0.0",
-    "eslint": "^1.10.3",
+    "eslint": "^2.2.0",
     "lodash": "^4.2.1",
     "mocha": "^2.4.5"
   }
