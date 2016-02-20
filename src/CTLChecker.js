@@ -20,60 +20,60 @@ const Checker = function() {
 	this._S = [];
 };
 
-Checker.prototype.check = function(model, formula) {
+Checker.prototype.check = function(model, expression) {
 	this._S = model;
-	return some(this.SAT(formula), function(state) {
+	return some(this.SAT(expression), function(state) {
 		return state.isInitial;
 	});
 };
 
-Checker.prototype.SAT = function(formula) {
-	if (formula.arity) {
-		switch (formula.value) {
+Checker.prototype.SAT = function(expression) {
+	if (expression.arity) {
+		switch (expression.value) {
 		case '!':
 			return without(
 				this._S,
-				this.SAT(formula[0]));
+				this.SAT(expression.left));
 		case '|':
 			return union(
-				this.SAT(formula[0]),
-				this.SAT(formula[1]));
+				this.SAT(expression.left),
+				this.SAT(expression.right));
 		case '&':
 			return intersection(
-				this.SAT(formula[0]),
-				this.SAT(formula[1]));
+				this.SAT(expression.left),
+				this.SAT(expression.right));
 		case '->':
 			return union(
-				intersection(this.SAT(formula[0]),
-					this.SAT(formula[1])),
+				intersection(this.SAT(expression.left),
+					this.SAT(expression.right)),
 				without(this._S, 
-					this.SAT(formula[0])));
+					this.SAT(expression.left)));
 		case 'EX':
-			return this.SAT_EX(formula[0]);
+			return this.SAT_EX(expression.left);
 		case 'EU':
-			return this.SAT_EU(formula[0], formula[1]);
+			return this.SAT_EU(expression.left, expression.right);
 		case 'EG':
-			return this.SAT_EG(formula[0]);
+			return this.SAT_EG(expression.left);
 		default:
 			throw {
 				name: 'SystemError',
-				message: 'Expected an operator but found \'' + formula.value + '\'.'
+				message: 'Expected an operator but found \'' + expression.value + '\'.'
 			};
 		}
 	}
 	else {
-		if (formula.value === '\\T') {
+		if (expression.value === '\\T') {
 			//true is true for all states
 			return this._S;
 		}
-		else if (formula.value === '\\F') {
+		else if (expression.value === '\\F') {
 			//false is true in no states
 			return [];
 		}
 		else {
 			// return the set of states which include the given atom
 			return filter(this._S, function(state) {
-				return includes(state.properties, formula.value);
+				return includes(state.properties, expression.value);
 			});
 		}
 	}
@@ -89,8 +89,8 @@ Checker.prototype.preE = function(Y) {
 	});
 };
 	
-Checker.prototype.SAT_EX = function(formula) {
-	return this.preE(this.SAT(formula));
+Checker.prototype.SAT_EX = function(expression) {
+	return this.preE(this.SAT(expression));
 };
 
 Checker.prototype.SAT_EU = function(first, second) {
@@ -109,9 +109,9 @@ Checker.prototype.SAT_EU = function(first, second) {
 	return Y;
 };
 
-Checker.prototype.SAT_EG = function(formula) {
+Checker.prototype.SAT_EG = function(expression) {
 	X = [];
-	Y = this.SAT(formula);
+	Y = this.SAT(expression);
 
 	while (!_equal(X, Y)) {
 		[X, Y] = [Y, intersection(Y, this.preE(Y))];
@@ -120,11 +120,11 @@ Checker.prototype.SAT_EG = function(formula) {
 	return Y;
 };
 
-export default function(model, formula) {
-	if ((typeof formula) === 'string') {
-		formula = parse(formula);
+export default function(model, expression) {
+	if ((typeof expression) === 'string') {
+		expression = parse(expression);
 	}
-	return new Checker().check(model, formula);
+	return new Checker().check(model, expression);
 };
 
 /*CTL.generateRandomModel = function(numStates) {

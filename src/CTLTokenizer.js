@@ -95,7 +95,7 @@ export default function(input) {
 					c = input.charAt(i);
 				}
 				else {
-					throw SyntaxError(`Unknown character: '\\'`);
+					throw SyntaxError('Unknown character: \'\\\'');
 				}
 			}
 
@@ -117,7 +117,7 @@ export default function(input) {
 					c = input.charAt(i);
 				}
 				else {
-					throw SyntaxError(`Unknown character: '-'.`);
+					throw SyntaxError('Unknown character: \'-\'.');
 				}
 			}
 

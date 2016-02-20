@@ -8,19 +8,19 @@ const SyntaxError = function(message) {
 	};
 };
 
-const UnaryOperator = function(value, l) {
+const UnaryOperator = function(value, left) {
 	return {
-		0: l,
-		value: value,
+		left,
+		value,
 		arity: 1
 	};
 };
 
-const BinaryOperator = function(value, l, r) {
+const BinaryOperator = function(value, left, right) {
 	return {
-		0: l,
-		1: r,
-		value: value,
+		left,
+		right,
+		value,
 		arity: 2
 	};
 };
@@ -47,22 +47,22 @@ const isLTLOperator = function(value) {
 	return includes(LTLOperators, value);
 };
 const combineOps = function(tree) {
-	// Combine CTL-LTL operator pairs into single tokens.
-	// Throw a syntax error if the pairs are not matched.
-	if (isCTLOperator(tree.value)) {
-		tree.value = tree.value + tree[0].value;
-		if (tree[0][1] !== undefined) {
-			tree[1] = tree[0][1];
+	if (tree) {
+		// Combine CTL-LTL operator pairs into single tokens.
+		// Throw a syntax error if the pairs are not matched.
+		if (isCTLOperator(tree.value)) {
+			tree.value = `${tree.value}${tree.left.value}`;
+			if (tree.left.right) {
+				tree.right = tree.left.right;
+			}
+			tree.left = tree.left.left;
 		}
-		tree[0] = tree[0][0];
-	}
-	else if (isLTLOperator(tree.value)) {
-		throw SyntaxError(`Expected a CTL operator but found '${tree.value}'.`);
-	}
+		else if (isLTLOperator(tree.value)) {
+			throw SyntaxError(`Expected a CTL operator but found '${tree.value}'.`);
+		}
 
-	let i = tree.arity;
-	while (i--) {
-		combineOps(tree[i]);
+		tree.left = combineOps(tree.left);
+		tree.right = combineOps(tree.right);
 	}
 	return tree;
 };
@@ -72,58 +72,58 @@ const translate = function(tree) { //THROWS SystemError
 		switch(tree.value) {
 		case 'EX':
 		case 'EG':
-			tree[0] = translate(tree[0]);
+			tree.left = translate(tree.left);
 			break;
 		case 'EU':
-			tree[0] = translate(tree[0]);
-			tree[1] = translate(tree[1]);
+			tree.left = translate(tree.left);
+			tree.left = translate(tree.right);
 			break;
 		case 'EF':
 			//EF a  =  EU(TRUE, a)
-			tree[0] = translate(tree[0]);
-			const a = tree[0];
+			tree.left = translate(tree.left);
+			const a = tree.left;
 			tree.value = 'EU';
-			tree[0] = TRUE;
-			tree[1] = a;
+			tree.left = TRUE;
+			tree.right = a;
 			break;
 		case 'ER':
 			//ER(a, b)  =  !AU(!a, !b)
 			//          =  EU(b, a&b) & !EG(b)
-			tree[0] = translate(tree[0]);
-			tree[1] = translate(tree[1]);
+			tree.left = translate(tree.left);
+			tree.right = translate(tree.right);
 			tree = BinaryOperator(
-				'&', 
+				'&',
 				BinaryOperator(
 					'EU',
 					b,
-					BinaryOperator('&', tree[0], tree[1])),
+					BinaryOperator('&', tree.left, tree.right)),
 				UnaryOperator(
 					'!',
-					UnaryOperator('EG', tree[1])));
+					UnaryOperator('EG', tree.right)));
 			break;
 		case 'EW':
 			//EW(a, b)  =  !ER(b, a|b)
 			//          =  EU(a|b, b&(a|b)) & !EG(a|b)
 			//          =  EU(a|b, b) & !EG(a|b)
-			tree[0] = translate(tree[0]);
-			tree[1] = translate(tree[1]);
+			tree.left = translate(tree.left);
+			tree.right = translate(tree.right);
 			tree = BinaryOperator(
 				'&',
 				BinaryOperator(
 					'EU',
-					BinaryOperator('|', tree[0], tree[1]),
+					BinaryOperator('|', tree.left, tree.right),
 					b),
 				UnaryOperator(
 					'!',
 					UnaryOperator(
 						'EG',
-						BinaryOperator('|', tree[0], tree[1]))));
+						BinaryOperator('|', tree.left, tree.right))));
 			break;
 		case 'AX':
 			//AX(a)  =  !EX(!a)
 			//tree.first = this.translate(tree.first);
 			// do the negation before translating to catch double negations
-			const a = translate(UnaryOperator('!', tree[0]));
+			const a = translate(UnaryOperator('!', tree.left));
 			tree = UnaryOperator('!', UnaryOperator('EX', a));
 			break;
 		case 'AG':
@@ -132,18 +132,18 @@ const translate = function(tree) { //THROWS SystemError
 			// do the negation before translating to catch double negations
 			tree = UnaryOperator(
 				'!',
-				BinaryOperator('EU', TRUE, translate(UnaryOperator('!', tree[0]))));
+				BinaryOperator('EU', TRUE, translate(UnaryOperator('!', tree.left))));
 			break;
 		case 'AF':
 			//AF(a)  =  !EG(!a)
 			tree = UnaryOperator(
 				'!',
-				UnaryOperator('EG', translate(UnaryOperator('!', tree[0]))));
+				UnaryOperator('EG', translate(UnaryOperator('!', tree.left))));
 			break;
 		case 'AU':
 			//AU(a, b)  =  !EU(!b, !a & !b) | EG(!b)
-			const a = translate(UnaryOperator('!', tree[0]));
-			const b = translate(UnaryOperator('!', tree[1]));
+			const a = translate(UnaryOperator('!', tree.left));
+			const b = translate(UnaryOperator('!', tree.right));
 			tree = BinaryOperator(
 				'|',
 				UnaryOperator(
@@ -160,13 +160,13 @@ const translate = function(tree) { //THROWS SystemError
 				'!',
 				BinaryOperator(
 					'EU',
-					translate(UnaryOperator('!', tree[0])),
-					translate(UnaryOperator('!', tree[1]))));
+					translate(UnaryOperator('!', tree.left)),
+					translate(UnaryOperator('!', tree.right))));
 			break;
 		case 'AW':
 			//AW(a, b)  =  !EU(!b, !a & !b)
-			a = translate(UnaryOperator('!', tree[0]));
-			b = translate(UnaryOperator('!', tree[1]));
+			a = translate(UnaryOperator('!', tree.left));
+			b = translate(UnaryOperator('!', tree.right));
 			tree = UnaryOperator(
 				'!',
 				BinaryOperator(
@@ -175,23 +175,23 @@ const translate = function(tree) { //THROWS SystemError
 					BinaryOperator('&', a, b)));
 			break;
 		case '!':
-			if (tree[0].value === '!') {
+			if (tree.left.value === '!') {
 				// remove any number of double negations.
 				while (tree.value === '!' &&
-			  		tree[0].value === '!') {
-					tree = tree[0][0];
+					tree.left.value === '!') {
+					tree = tree.left.left;
 				}
 				tree = translate(tree);
 			}
 			else {
-				tree[0] = translate(tree[0]);
+				tree.left = translate(tree.left);
 			}
 			break;
 		case '&':
 		case '|':
 		case '->':
-			tree[0] = translate(tree[0]);
-			tree[1] = translate(tree[1]);
+			tree.left = translate(tree.left);
+			tree.right = translate(tree.right);
 			break;
 		default:
 			throw SyntaxError(`Expected an operator but found '${tree.value}'.`);
@@ -201,31 +201,31 @@ const translate = function(tree) { //THROWS SystemError
 };
 
 const sanitize = function(ast) {
-	for (let p in ast) {
-		if (ast.hasOwnProperty(p)) {
-			if (!isNaN(parseInt(p, 10))) {
-				sanitize(ast[p]);
-			}
-			else if (p !== 'value' && p !== 'arity') {
-				delete ast[p];
-			}
-		}
+	const newAst = {};
+	if (ast.left) {
+		newAst.left = sanitize(ast.left);
 	}
-	return ast;
+	if (ast.right) {
+		newAst.right = sanitize(ast.right);
+	}
+	newAst.value = ast.value;
+	newAst.arity = ast.arity;
+	return newAst;
 };
 
 const prefixOperatorNudForParser = (parser) => {
 	return function() {
-		this[0] = parser.expression(50);
+		this.left = parser.expression(50);
 		return this;
 	};
 };
 
 const quantifierNudForParser = (parser) => {
 	return function() {
-		this[0] = parser.expression(40);
-		if (!isLTLOperator(this[0].value)) {
-			throw SyntaxError(`Expected an LTL operator but found '${this[0].value}'.`);
+		this.left = parser.expression(40);
+		// quantifiers must be followed immetiately by an LTL operator
+		if (!isLTLOperator(this.left.value)) {
+			throw SyntaxError(`Expected an LTL operator but found '${this.left.value}'.`);
 		}
 		return this;
 	};
@@ -364,8 +364,8 @@ Parser.prototype.rightAssociativeInfixOperator = function({ id = '', leftBinding
 		leftBindingPower,
 		arity: 2,
 		led: function(left) {
-			this[0] = left;
-			this[1] = parser.expression(leftBindingPower - 1);
+			this.left = left;
+			this.right = parser.expression(leftBindingPower - 1);
 			return this;
 		}
 	});
