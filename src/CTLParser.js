@@ -51,14 +51,14 @@ var combineOps = function(tree) {
 	// Combine CTL-LTL operator pairs into single tokens.
 	// Throw a syntax error if the pairs are not matched.
 	var i;
-	if(isCTLOperator(tree.value)) {
+	if (isCTLOperator(tree.value)) {
 		tree.value = tree.value + tree[0].value;
-		if(tree[0][1] !== undefined) {
+		if (tree[0][1] !== undefined) {
 			tree[1] = tree[0][1];
 		}
 		tree[0] = tree[0][0];
 	}
-	else if(isLTLOperator(tree.value)) {
+	else if (isLTLOperator(tree.value)) {
 		throw SyntaxError('Expected a CTL operator but found \'' +
 			tree.value + '\'.');
 	}
@@ -72,7 +72,7 @@ var combineOps = function(tree) {
 
 var translate = function(tree) { //THROWS SystemError
 	var a, b;
-	if(!tree.args) {
+	if (!tree.args) {
 		return tree;
 	}
 	else {
@@ -201,7 +201,7 @@ var translate = function(tree) { //THROWS SystemError
 					_BinaryOperator('&', a, b)));
 			break;
 		case '!':
-			if(tree[0].value === '!') {
+			if (tree[0].value === '!') {
 				//remove any number of double negations.
 				while(tree.value === '!' &&
 			  		tree[0].value === '!') {
@@ -229,12 +229,12 @@ var translate = function(tree) { //THROWS SystemError
 
 var sanitize = function(ast) {
 	var p;
-	for(p in ast) {
-		if(ast.hasOwnProperty(p)) {
-			if(!isNaN(parseInt(p))) {
+	for (p in ast) {
+		if (ast.hasOwnProperty(p)) {
+			if (!isNaN(parseInt(p))) {
 				sanitize(ast[p]);
 			}
-			else if(p !== 'value' && p !== 'args') {
+			else if (p !== 'value' && p !== 'args') {
 				delete ast[p];
 			}
 		}
@@ -243,7 +243,7 @@ var sanitize = function(ast) {
 };
 
 
-var Parser = function(tokenizer) {
+var Parser = function() {
 	var context = this;
 
 	this._token = null;
@@ -262,7 +262,7 @@ var Parser = function(tokenizer) {
 
 	this._prefix('E', function() {
 		this[0] = context._expression(40);
-		if(!isLTLOperator(this[0].value)) {
+		if (!isLTLOperator(this[0].value)) {
 			throw SyntaxError('Expected an LTL operator ' + 
 				'but found \'' +
 				this[0].value + '\'.');
@@ -271,7 +271,7 @@ var Parser = function(tokenizer) {
 	});
 	this._prefix('A', function() {
 		this[0] = context._expression(40);
-		if(!isLTLOperator(this[0].value)) {
+		if (!isLTLOperator(this[0].value)) {
 			throw SyntaxError('Expected an LTL operator ' +
 				'but found \''+this[0].value +
 				'\'.');
@@ -309,14 +309,14 @@ var Parser = function(tokenizer) {
 
 
 Parser.prototype._advance = function (id) {
-	var a, o, t, v, i;
+	var a, o, t, v;
 	if (id && this._token.id !== id) {
 		var expString = '\'' + id + '\'',
 			foundString = '\'' + this._token.value+ '\'';
-		if(id === '(end)') {
+		if (id === '(end)') {
 			expString = 'end of input';
 		}
-		else if(this._token.value === '(end)') {
+		else if (this._token.value === '(end)') {
 			foundString = 'end of input';
 		}
 		throw SyntaxError('Expected ' + expString +
@@ -355,7 +355,7 @@ Parser.prototype._expression = function (rbp) {
 	var left;
 	var t = this._token;
 	this._advance();
-	if(t.value === '(end)') {
+	if (t.value === '(end)') {
 		throw SyntaxError('Unexpected end of input');
 	}
 	left = t.nud();
@@ -370,7 +370,7 @@ Parser.prototype._expression = function (rbp) {
 Parser.prototype._symbol = function(id, bp) {
 	var s = this._symbol_table[id];
 	bp = bp || 0;
-	if(s) {
+	if (s) {
 		if (bp >= s.lbp) {
 			s.lbp = bp;
 		}
@@ -442,9 +442,8 @@ Parser.prototype.parse = function(toks) {
 };
 
 export default function(data) {
-	if(typeof(data) === 'string') {
+	if ((typeof data) === 'string') {
 		data = tokenize(data);
 	}
-	var parser = new Parser();
-	return sanitize(translate(combineOps(parser.parse(data))));
+	return sanitize(translate(combineOps(new Parser().parse(data))));
 };

@@ -32,7 +32,9 @@ var isWhitespaceChar = function(c) {
 	return whitespaceRegex.test(c);
 };
 
-var isBooleanChar = partial(includes, ['T', 'F']);
+var isBooleanChar = function(c) {
+	return (c === 'T') || (c === 'F');
+};
 
 var stringDelimiterRegex = /^['"]$/;
 var isStringDelimiterChar = function(c) {
@@ -40,19 +42,19 @@ var isStringDelimiterChar = function(c) {
 };
 
 export default function(input) {
-	var c = 0, // The current character.
+	var c = '', // The current character.
 		i = 0, // The index of the current character.
 		q, // The quote character.
 		str, // The string value.
 		result = [];
 	
 	// Begin tokenization. If the source string is empty, return nothing.
-	if(!input) {
+	if (!input) {
 		return [];
 	}
 
 	c = input.charAt(i);
-	while(c) {
+	while (c) {
 		// Ignore whitespace.
 		if (isWhitespaceChar(c)) {
 			i += 1;
@@ -65,16 +67,16 @@ export default function(input) {
 			q = c;
 			//skip over the opening string delimiter
 			i += 1;
-			for(;;) {
+			for (;;) {
 				c = input.charAt(i);
-				if(c === '') {
-					throw SyntaxError('Expected '+q+' but found end of input');
+				if (c === '') {
+					throw SyntaxError('Expected ' + q + ' but found end of input');
 				}
-				else if(c === '\\') {
+				else if (c === '\\') {
 					throw SyntaxError('Backslashes are not allowed in strings!');
 				}
 				i += 1;
-				if(c === q) {
+				if (c === q) {
 					break;
 				}
 				else {
@@ -89,11 +91,11 @@ export default function(input) {
 		// although 'T' would also be unambiguous, '\T' screams 'i'm special!', so there
 		// is no way that \T could be confused with an ordinary property. F is an operator, so
 		// we need to be able to tell F from \F (although the user could always specify !\T).
-		else if(c === '\\') {
+		else if (c === '\\') {
 			str = c;
 			i += 1;
 			c = input.charAt(i);
-			if(isBooleanChar(c)) {
+			if (isBooleanChar(c)) {
 				str += c;
 				i += 1;
 				result.push(Token('atom', str));
@@ -104,18 +106,18 @@ export default function(input) {
 			}
 		}
 
-		else if(isOp(c)) {
+		else if (isOp(c)) {
 			i += 1;
 			result.push(Token('operator', c));
 			c = input.charAt(i);
 		}
 
 		// dashes must be followed immediately by right angle brackets
-		else if(c === dash) {
+		else if (c === dash) {
 			str = c;
 			i += 1;
 			c = input.charAt(i);
-			if(c === rightAngleBracket) {
+			if (c === rightAngleBracket) {
 				str += c;
 				i += 1;
 				result.push(Token('operator', str));
@@ -127,12 +129,12 @@ export default function(input) {
 		}
 		
 		//legal non-operator character
-		else if(isNonOp(c)) {
-			str = ''+c;
+		else if (isNonOp(c)) {
+			str = '' + c;
 			i += 1;
-			for(;;) {
+			for (;;) {
 				c = input.charAt(i);
-				if(isNonOp(c)) {
+				if (isNonOp(c)) {
 					str += c;
 					i += 1;
 				}
@@ -145,7 +147,7 @@ export default function(input) {
 		}
 		
 		else {
-			throw SyntaxError('Unknown character: \''+input.charAt(i)+'\'');
+			throw SyntaxError('Unknown character: \'' + input.charAt(i) + '\'');
 		}
 	}
 	return result;

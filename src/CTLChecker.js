@@ -8,11 +8,13 @@
  *    <id>[] outTransitions
  * }[]
  */
+import { filter, indexOf, intersection, map, some, union, without } from 'lodash';
 import parse from './CTLParser';
 
+
 var _equal = function(a, b) {
-	return !_.without(a, b).length &&
-		!_.without(b, a).length;
+	return !without(a, b).length &&
+		!without(b, a).length;
 };
 	
 var Checker = function() {
@@ -21,7 +23,7 @@ var Checker = function() {
 
 Checker.prototype.check = function(model, formula) {
 	this._S = model;
-	return _.any(this.SAT(formula), 
+	return some(this.SAT(formula), 
 		function(state) {
 			return state.isInitial;
 		});
@@ -29,19 +31,19 @@ Checker.prototype.check = function(model, formula) {
 
 Checker.prototype.SAT = function(formula) {
 	var subset, i;
-	if(!formula.args) {
-		if(formula.value === '\\T') {
+	if (!formula.args) {
+		if (formula.value === '\\T') {
 			//true is true for all states
 			return this._S;
 		}
-		else if(formula.value === '\\F') {
+		else if (formula.value === '\\F') {
 			//false is true in no states
 			return [];
 		}
 		else {
 			subset = [], i = this._S.length;
 			while(i--) {
-				if(_.indexOf(this._S[i].properties, formula.value) !== -1) {
+				if (indexOf(this._S[i].properties, formula.value) !== -1) {
 					subset.push(this._S[i]);
 				}
 			}
@@ -51,22 +53,22 @@ Checker.prototype.SAT = function(formula) {
 	else {
 		switch(formula.value) {
 		case '!':
-			return _.without(
+			return without(
 				this._S, 
 				this.SAT(formula[0]));
 		case '|':
-			return _.union(
+			return union(
 				this.SAT(formula[0]), 
 				this.SAT(formula[1]));
 		case '&':
-			return _.intersection(
+			return intersection(
 				this.SAT(formula[0]), 
 				this.SAT(formula[1]));
 		case '->':
-			return _.union(
-				_.intersection(this.SAT(formula[0]), 
+			return union(
+				intersection(this.SAT(formula[0]), 
 					this.SAT(formula[1])),
-				_.without(this._S, 
+				without(this._S, 
 					this.SAT(formula[0])));
 		case 'EX':
 			return this.SAT_EX(formula[0]);
@@ -87,13 +89,13 @@ Checker.prototype.SAT = function(formula) {
 Checker.prototype.preE = function(Y) {
 	// return the set of states that make a transition 
 	// to a state in Y
-	var YIDs = _.map(Y, function(el) {
+	var YIDs = map(Y, function(el) {
 		return el.id;
 	});
 
-	return _.filter(this._S,
+	return filter(this._S,
 		function(el) {
-			return _.intersection(el.outTransitions, YIDs).length > 0;
+			return intersection(el.outTransitions, YIDs).length > 0;
 		});
 };
 	
@@ -101,18 +103,18 @@ Checker.prototype.SAT_EX = function(formula) {
 	return this.preE(this.SAT(formula));
 };
 
-Checker.prototype.SAT_EU = function(/*object*/ first, /*object*/ second) {
+Checker.prototype.SAT_EU = function(first, second) {
 	// return the set of states that satisfy EU(first, second)
 	// increase the length of the path between a state in 
 	// SAT(first) and a state in SAT(second) until there 
 	// is no change.
-	var W, X, Y, preY, intWPreY;
+	var W, X, Y;
 	W = this.SAT(first);
 	X = this._S;
 	Y = this.SAT(second);
-	while(!_equal(X, Y)) {
+	while (!_equal(X, Y)) {
 		X = Y;
-		Y = _.union(Y, _.intersection(W, this.preE(Y)));
+		Y = union(Y, intersection(W, this.preE(Y)));
 	}
 	return Y;
 };
@@ -123,17 +125,16 @@ Checker.prototype.SAT_EG = function(formula) {
 	X = [];
 	while(!_equal(X, Y)) {
 		X = Y;
-		Y = _.intersection(Y, this.preE(Y));
+		Y = intersection(Y, this.preE(Y));
 	}
 	return Y;
 };
 
-export default function(model, formula, fairness) {
-	if(typeof(formula) === 'string') {
+export default function(model, formula) {
+	if ((typeof formula) === 'string') {
 		formula = parse(formula);
 	}
-	var checker = new Checker();
-	return checker.check(model, formula, fairness);
+	return new Checker().check(model, formula);
 };
 
 /*CTL.generateRandomModel = function(numStates) {
