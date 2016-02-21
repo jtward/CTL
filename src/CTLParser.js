@@ -1,14 +1,14 @@
 import { includes, assign } from 'lodash';
 import tokenize from './CTLTokenizer';
 
-const SyntaxError = function(message) {
+const SyntaxError = (message) => {
 	return {
-		'name': 'SyntaxError',
-		'message': message
+		name: 'SyntaxError',
+		message
 	};
 };
 
-const UnaryOperator = function(value, left) {
+const UnaryOperator = (value, left) => {
 	return {
 		left,
 		value,
@@ -16,7 +16,7 @@ const UnaryOperator = function(value, left) {
 	};
 };
 
-const BinaryOperator = function(value, left, right) {
+const BinaryOperator = (value, left, right) => {
 	return {
 		left,
 		right,
@@ -40,10 +40,10 @@ const itself = function() {
 
 const CTLOperators = ['A', 'E'];
 const LTLOperators = ['G', 'F', 'X', 'U', 'W', 'R'];
-const isCTLOperator = function(value) {
+const isCTLOperator = (value) => {
 	return includes(CTLOperators, value);
 };
-const isLTLOperator = function(value) {
+const isLTLOperator = (value) => {
 	return includes(LTLOperators, value);
 };
 const combineOps = function(tree) {
@@ -67,81 +67,77 @@ const combineOps = function(tree) {
 	return tree;
 };
 
-const translate = function(tree) { //THROWS SystemError
+const translate = (tree) => {
 	if (tree.arity) {
-		switch(tree.value) {
-		case 'EX':
-		case 'EG':
+		if (tree.value === 'EX' || tree.value === 'EG') {
 			tree.left = translate(tree.left);
-			break;
-		case 'EU':
+		}
+		else if (tree.value === 'EU') {
 			tree.left = translate(tree.left);
 			tree.left = translate(tree.right);
-			break;
-		case 'EF':
-			//EF a  =  EU(TRUE, a)
-			tree.left = translate(tree.left);
-			const a = tree.left;
-			tree.value = 'EU';
-			tree.left = TRUE;
-			tree.right = a;
-			break;
-		case 'ER':
-			//ER(a, b)  =  !AU(!a, !b)
-			//          =  EU(b, a&b) & !EG(b)
-			tree.left = translate(tree.left);
-			tree.right = translate(tree.right);
+		}
+		else if (tree.value === 'EF') {
+			// EF a  =  EU(TRUE, a)
+			tree = BinaryOperator('EU', TRUE, translate(tree.left));
+		}
+		else if (tree.value === 'ER') {
+			// ER(a, b) = !AU(!a, !b)
+			//          = EU(b, a&b) & !EG(b)
+			const a = translate(tree.left);
+			const b = translate(tree.right);
 			tree = BinaryOperator(
 				'&',
 				BinaryOperator(
 					'EU',
 					b,
-					BinaryOperator('&', tree.left, tree.right)),
+					BinaryOperator('&', a, b)),
 				UnaryOperator(
 					'!',
-					UnaryOperator('EG', tree.right)));
-			break;
-		case 'EW':
-			//EW(a, b)  =  !ER(b, a|b)
-			//          =  EU(a|b, b&(a|b)) & !EG(a|b)
-			//          =  EU(a|b, b) & !EG(a|b)
-			tree.left = translate(tree.left);
-			tree.right = translate(tree.right);
+					UnaryOperator('EG', b)));
+		}
+		else if (tree.value === 'EW') {
+			// EW(a, b) = !ER(b, a|b)
+			//          = EU(a|b, b&(a|b)) & !EG(a|b)
+			//          = EU(a|b, b) & !EG(a|b)
+			const a = translate(tree.left);
+			const b = translate(tree.right);
 			tree = BinaryOperator(
 				'&',
 				BinaryOperator(
 					'EU',
-					BinaryOperator('|', tree.left, tree.right),
+					BinaryOperator('|', a, b),
 					b),
 				UnaryOperator(
 					'!',
 					UnaryOperator(
 						'EG',
-						BinaryOperator('|', tree.left, tree.right))));
-			break;
-		case 'AX':
-			//AX(a)  =  !EX(!a)
-			//tree.first = this.translate(tree.first);
+						BinaryOperator('|', a, b))));
+		}
+		else if (tree.value === 'AX') {
+			// AX(a) = !EX(!a)
 			// do the negation before translating to catch double negations
-			const a = translate(UnaryOperator('!', tree.left));
-			tree = UnaryOperator('!', UnaryOperator('EX', a));
-			break;
-		case 'AG':
-			//AG(a)  =  !EF(!a)
-			//       =  !EU(T, !a)
+			tree = UnaryOperator(
+				'!',
+				UnaryOperator(
+					'EX',
+					translate(UnaryOperator('!', tree.left))));
+		}
+		else if (tree.value === 'AG') {
+			// AG(a) = !EF(!a)
+			//       = !EU(T, !a)
 			// do the negation before translating to catch double negations
 			tree = UnaryOperator(
 				'!',
 				BinaryOperator('EU', TRUE, translate(UnaryOperator('!', tree.left))));
-			break;
-		case 'AF':
-			//AF(a)  =  !EG(!a)
+		}
+		else if (tree.value === 'AF') {
+			// AF(a) = !EG(!a)
 			tree = UnaryOperator(
 				'!',
 				UnaryOperator('EG', translate(UnaryOperator('!', tree.left))));
-			break;
-		case 'AU':
-			//AU(a, b)  =  !EU(!b, !a & !b) | EG(!b)
+		}
+		else if (tree.value === 'AU') {
+			// AU(a, b) = !EU(!b, !a & !b) | EG(!b)
 			const a = translate(UnaryOperator('!', tree.left));
 			const b = translate(UnaryOperator('!', tree.right));
 			tree = BinaryOperator(
@@ -153,28 +149,28 @@ const translate = function(tree) { //THROWS SystemError
 						b,
 						BinaryOperator('&', a, b))),
 				UnaryOperator('EG', b));
-			break;
-		case 'AR':
-			//AU(a, b)  =  !EU(!a, !b)
+		}
+		else if (tree.value === 'AR') {
+			// AU(a, b) = !EU(!a, !b)
 			tree = UnaryOperator(
 				'!',
 				BinaryOperator(
 					'EU',
 					translate(UnaryOperator('!', tree.left)),
 					translate(UnaryOperator('!', tree.right))));
-			break;
-		case 'AW':
-			//AW(a, b)  =  !EU(!b, !a & !b)
-			a = translate(UnaryOperator('!', tree.left));
-			b = translate(UnaryOperator('!', tree.right));
+		}
+		else if (tree.value === 'AW') {
+			// AW(a, b) = !EU(!b, !a & !b)
+			const a = translate(UnaryOperator('!', tree.left));
+			const b = translate(UnaryOperator('!', tree.right));
 			tree = UnaryOperator(
 				'!',
 				BinaryOperator(
 					'EU',
 					b,
 					BinaryOperator('&', a, b)));
-			break;
-		case '!':
+		}
+		else if (tree.value === '!') {
 			if (tree.left.value === '!') {
 				// remove any number of double negations.
 				while (tree.value === '!' &&
@@ -186,14 +182,12 @@ const translate = function(tree) { //THROWS SystemError
 			else {
 				tree.left = translate(tree.left);
 			}
-			break;
-		case '&':
-		case '|':
-		case '->':
+		}
+		else if (tree.value === '&' || tree.value === '|' || tree.value === '->') {
 			tree.left = translate(tree.left);
 			tree.right = translate(tree.right);
-			break;
-		default:
+		}
+		else {
 			throw SyntaxError(`Expected an operator but found '${tree.value}'.`);
 		}
 	}
@@ -220,10 +214,10 @@ const prefixOperatorNudForParser = (parser) => {
 	};
 };
 
-const quantifierNudForParser = (parser) => {
+const ctlNudForParser = (parser) => {
 	return function() {
 		this.left = parser.expression(40);
-		// quantifiers must be followed immetiately by an LTL operator
+		// CTL operators must be followed immetiately by an LTL operator
 		if (!isLTLOperator(this.left.value)) {
 			throw SyntaxError(`Expected an LTL operator but found '${this.left.value}'.`);
 		}
@@ -233,9 +227,9 @@ const quantifierNudForParser = (parser) => {
 
 const parenNudForParser = (parser) => {
 	return function() {
-		const e = parser.expression(0);
+		const expression = parser.expression(0);
 		parser.advance(')');
-		return e;
+		return expression;
 	};
 };
 
@@ -258,12 +252,12 @@ const Parser = function() {
 	this.rightAssociativeInfixOperator({ id: '&', leftBindingPower: 20 });
 	this.rightAssociativeInfixOperator({ id: '|', leftBindingPower: 20 });
 	this.rightAssociativeInfixOperator({ id: 'U', leftBindingPower: 40 });
-	this.rightAssociativeInfixOperator({ id: 'R', leftBindingPower: 40});
+	this.rightAssociativeInfixOperator({ id: 'R', leftBindingPower: 40 });
 	this.rightAssociativeInfixOperator({ id: 'W', leftBindingPower: 40 });
 
-	const quantifierNud = quantifierNudForParser(this);
-	this.prefixOperator({ id: 'E', nud: quantifierNud });
-	this.prefixOperator({ id: 'A', nud: quantifierNud });
+	const ctlNud = ctlNudForParser(this);
+	this.prefixOperator({ id: 'E', nud: ctlNud });
+	this.prefixOperator({ id: 'A', nud: ctlNud });
 
 	const prefixOperatorNud = prefixOperatorNudForParser(this);
 	this.prefixOperator({ id: '!', nud: prefixOperatorNud });
@@ -276,13 +270,13 @@ const Parser = function() {
 };
 
 
-Parser.prototype.advance = function(id) {
-	if (id && this.token.id !== id) {
-		const expString = `' ${id} '`;
-		const foundString = `' ${this.token.value} '`;
+Parser.prototype.advance = function(expectedId) {
+	if (expectedId && this.token.id !== expectedId) {
+		let expectedString = `'${id}'`;
+		let foundString = `'${this.token.value}'`;
 
-		if (id === '(end)') {
-			expString = 'end of input';
+		if (expectedId === '(end)') {
+			expectedString = 'end of input';
 		}
 		else if (this.token.value === '(end)') {
 			foundString = 'end of input';
@@ -296,9 +290,9 @@ Parser.prototype.advance = function(id) {
 		return null;
 	}
 
-	const t = this.tokens[this.tokenIndex];
-	const v = t.value;
-	const a = t.type;
+	const token = this.tokens[this.tokenIndex];
+	const v = token.value;
+	const a = token.type;
 	let o;
 
 	this.tokenIndex += 1;
@@ -342,7 +336,7 @@ Parser.prototype.expression = function(rightBindingPower) {
 Parser.prototype.symbol = function({ id = undefined, value = id, leftBindingPower = 0, arity = 0, nud = noarg, led = noarg }) {
 	const existingSymbol = this.symbolTable[id];
 	if (existingSymbol) {
-		s.leftBindingPower = Math.max(leftBindingPower, s.leftBindingPower);
+		existingSymbol.leftBindingPower = Math.max(leftBindingPower, existingSymbol.leftBindingPower);
 		return existingSymbol;
 	}
 	else {
@@ -384,12 +378,12 @@ Parser.prototype.parse = function(tokens) {
 	this.tokens = tokens;
 	this.tokenIndex = 0;
 	this.advance();
-	const s = this.expression(0);
+	const ast = this.expression(0);
 	this.advance('(end)');
-	return s;
+	return ast;
 };
 
-export default function(data) {
+export default (data) => {
 	if ((typeof data) === 'string') {
 		data = tokenize(data);
 	}

@@ -1,142 +1,120 @@
-import { includes, partial } from 'lodash';
-
-const Token = function(type, value) {
+const Token = (type, value) => {
 	return {
-		'type': type,
-		'value': value
+		type,
+		value
 	};
 };
 
-const SyntaxError = function(message) {
+const SyntaxError = (message) => {
 	return {
-		'name': 'SyntaxError',
-		'message': message
+		name: 'SyntaxError',
+		message
 	};
 };
 
+const backslash = '\\';
 const dash = '-';
 const rightAngleBracket = '>';
+const startAtom = /^(?![FAUXGREW])[\w\d\u0391-\u03C9\u00C0-\u00FF]/;
+const atom = /^(((?![FAUXGREW])[\w\d\u0391-\u03C9\u00C0-\u00FF])*)/;
+const operator = /^[FAUXGREW&|!()]$/;
+const whitespace = /^\s$/;
+const str = /^(['"])([^\\]*?)\1/;
 
-const nonOpRegex = /^(?!^.*[AEXFGURW]+.*$)[\w\d\u0391-\u03C9\u00C0-\u00FF]+/;
-const isNonOp = function(character) {
-	return nonOpRegex.test(character);
-};
-
-const opRegex = /^[AEXFGURW&|!()]$/;
-const isOp = function(character) {
-	return opRegex.test(character);
-};
-
-const whitespaceRegex = /^\s$/;
-const isWhitespaceChar = function(c) {
-	return whitespaceRegex.test(c);
-};
-
-const isBooleanChar = function(c) {
+const isBoolean = (c) => {
 	return (c === 'T') || (c === 'F');
 };
 
-const stringDelimiterRegex = /^['"]$/;
-const isStringDelimiterChar = function(c) {
-	return stringDelimiterRegex.test(c);
+const isStringDelimiter = (c) => {
+	return (c === '\'') || (c === '"');
 };
 
-export default function(input) {
+const tokenizeString = (delimiter, input) => {
+	const matches = str.exec(input);
+	if (matches) {
+		return matches[2];
+	}
+	else if (input.indexOf(delimiter) !== -1) {
+		throw SyntaxError('Backslashes are not allowed in strings!');
+	}
+	else {
+		throw SyntaxError(`Expected ${q} but found end of input.`);
+	}
+};
+
+const tokenizeAtom = (input) => {
+	const matches = atom.exec(input);
+	return matches[1];
+};
+
+export default (input) => {
 	const result = [];
 	
 	if (input) {
-		let i = 0;
-		let c = input.charAt(i);
+		let c;
+
+		const { skip, rest } = (() => {
+			let i = 0;
+			c = input.charAt(i);
+			return {
+				skip: (n = 1) => {
+					i += n;
+					c = input.charAt(i);
+				},
+				rest: () => {
+					return input.slice(i);
+				}
+			};
+		})();
+
 		while (c) {
 			// Ignore whitespace.
-			if (isWhitespaceChar(c)) {
-				i += 1;
-				c = input.charAt(i);
+			if (whitespace.test(c)) {
+				skip();
 			}
 
-			// strings (delimited by either ' or ") can contain anything except backslashes.
-			else if (isStringDelimiterChar(c)) {
-				let str = '';
-				let q = c;
-				// skip over the opening string delimiter
-				i += 1;
-				for (;;) {
-					c = input.charAt(i);
-					if (c === '') {
-						throw SyntaxError(`Expected ${q} but found end of input.`);
-					}
-					else if (c === '\\') {
-						throw SyntaxError('Backslashes are not allowed in strings!');
-					}
-					i += 1;
-					if (c === q) {
-						break;
-					}
-					else {
-						str += c;
-					}
-				}
+			else if (isStringDelimiter(c)) {
+				const str = tokenizeString(c, rest());
 				result.push(Token('atom', str));
-				c = input.charAt(i);
+				skip(str.length + 2); // add 2 for the delimiters, which are not part of the string
 			}
 
 			// the non-operators '\T' and '\F' are special: they mean 'true' and 'false' respectively.
 			// although 'T' would also be unambiguous, '\T' screams 'i'm special!', so there
 			// is no way that \T could be confused with an ordinary property. F is an operator, so
 			// we need to be able to tell F from \F (although the user could always specify !\T).
-			else if (c === '\\') {
-				let str = c;
-				i += 1;
-				c = input.charAt(i);
-				if (isBooleanChar(c)) {
-					str += c;
-					i += 1;
-					result.push(Token('atom', str));
-					c = input.charAt(i);
+			else if (c === backslash) {
+				skip(); // over backslash
+				if (isBoolean(c)) {
+					result.push(Token('atom', `\\${c}`));
+					skip();
 				}
 				else {
 					throw SyntaxError('Unknown character: \'\\\'');
 				}
 			}
 
-			else if (isOp(c)) {
-				i += 1;
+			else if (operator.test(c)) {
 				result.push(Token('operator', c));
-				c = input.charAt(i);
+				skip();
 			}
 
 			// dashes must be followed immediately by right angle brackets
 			else if (c === dash) {
-				let str = c;
-				i += 1;
-				c = input.charAt(i);
+				skip();
 				if (c === rightAngleBracket) {
-					str += c;
-					i += 1;
-					result.push(Token('operator', str));
-					c = input.charAt(i);
+					result.push(Token('operator', '->'));
+					skip();
 				}
 				else {
 					throw SyntaxError('Unknown character: \'-\'.');
 				}
 			}
 
-			// legal non-operator character
-			else if (isNonOp(c)) {
-				let str = c;
-				i += 1;
-				for (;;) {
-					c = input.charAt(i);
-					if (isNonOp(c)) {
-						str += c;
-						i += 1;
-					}
-					else {
-						break;
-					}
-				}
-				result.push(Token('atom', str));
-				c = input.charAt(i);
+			else if (startAtom.test(c)) {
+				const atom = tokenizeAtom(rest());
+				skip(atom.length);
+				result.push(Token('atom', atom));
 			}
 
 			else {

@@ -12,16 +12,16 @@ import { includes, intersection, isEmpty, filter, map, some, union, without, xor
 import parse from './CTLParser';
 
 
-const _equal = function(a, b) {
+const equal = (a, b) => {
 	return isEmpty(xor(a, b));
 };
 
 const Checker = function() {
-	this._S = [];
+	this.states = [];
 };
 
 Checker.prototype.check = function(model, expression) {
-	this._S = model;
+	this.states = model;
 	return some(this.SAT(expression), function(state) {
 		return state.isInitial;
 	});
@@ -32,7 +32,7 @@ Checker.prototype.SAT = function(expression) {
 		switch (expression.value) {
 		case '!':
 			return without(
-				this._S,
+				this.states,
 				this.SAT(expression.left));
 		case '|':
 			return union(
@@ -46,7 +46,7 @@ Checker.prototype.SAT = function(expression) {
 			return union(
 				intersection(this.SAT(expression.left),
 					this.SAT(expression.right)),
-				without(this._S, 
+				without(this.states,
 					this.SAT(expression.left)));
 		case 'EX':
 			return this.SAT_EX(expression.left);
@@ -64,7 +64,7 @@ Checker.prototype.SAT = function(expression) {
 	else {
 		if (expression.value === '\\T') {
 			//true is true for all states
-			return this._S;
+			return this.states;
 		}
 		else if (expression.value === '\\F') {
 			//false is true in no states
@@ -72,7 +72,7 @@ Checker.prototype.SAT = function(expression) {
 		}
 		else {
 			// return the set of states which include the given atom
-			return filter(this._S, function(state) {
+			return filter(this.states, function(state) {
 				return includes(state.properties, expression.value);
 			});
 		}
@@ -84,8 +84,8 @@ Checker.prototype.preE = function(Y) {
 	// to a state in Y
 	const YIDs = map(Y, 'id');
 
-	return filter(this._S, function(el) {
-		return !isEmpty(intersection(el.outTransitions, YIDs));
+	return filter(this.states, function(state) {
+		return !isEmpty(intersection(state.outTransitions, YIDs));
 	});
 };
 	
@@ -99,10 +99,10 @@ Checker.prototype.SAT_EU = function(first, second) {
 	// SAT(first) and a state in SAT(second) until there 
 	// is no change.
 	const W = this.SAT(first);
-	let X = this._S;
+	let X = this.states;
 	let Y = this.SAT(second);
 
-	while(!_equal(X, Y)) {
+	while(!equal(X, Y)) {
 		[X, Y] = [Y, union(Y, intersection(W, this.preE(Y)))];
 	}
 
@@ -110,17 +110,17 @@ Checker.prototype.SAT_EU = function(first, second) {
 };
 
 Checker.prototype.SAT_EG = function(expression) {
-	X = [];
-	Y = this.SAT(expression);
+	let X = [];
+	let Y = this.SAT(expression);
 
-	while (!_equal(X, Y)) {
+	while (!equal(X, Y)) {
 		[X, Y] = [Y, intersection(Y, this.preE(Y))];
 	}
 
 	return Y;
 };
 
-export default function(model, expression) {
+export default (model, expression) => {
 	if ((typeof expression) === 'string') {
 		expression = parse(expression);
 	}
