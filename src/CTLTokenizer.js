@@ -9,7 +9,7 @@ const rules = [{
 	type: 'atom'
 }, {
 	// quoted atoms
-	regex: /^(['"])(.*?)\1/,
+	regex: /^(['"])(.+?)\1/,
 	valueCaptureGroup: 2,
 	type: 'atom'
 }, {
@@ -47,7 +47,7 @@ export default (input) => {
 		});
 	};
 
-	const skip = (n = 1) => {
+	const skip = (n) => {
 		didTokenize = didTokenize || n > 0;
 		input = input.slice(n);
 	};
