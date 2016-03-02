@@ -52,13 +52,15 @@ export default (input) => {
 		input = input.slice(n);
 	};
 
+	const tokenize = (rule) => {
+		rule(input, appendToken, skip);
+		return !didTokenize; // break out if we tokenized anything
+	};
+
 	while (input) {
 		didTokenize = false;
 
-		each(tokenizers, (rule) => {
-			rule(input, appendToken, skip);
-			return !didTokenize; // break out if we tokenized anything
-		});
+		each(tokenizers, tokenize);
 
 		if (!didTokenize && input) {
 			throw {
