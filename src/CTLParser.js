@@ -1,4 +1,4 @@
-import { includes, assign } from 'lodash';
+import { assign, includes, map } from 'lodash';
 import tokenize from './CTLTokenizer';
 
 const SyntaxError = (message) => {
@@ -38,6 +38,17 @@ const itself = function() {
 	return this;
 };
 
+const Symbol = ({ id = undefined, value = id, leftBindingPower = 0, arity = 0, nud = noarg, led = noarg }) => {
+	return {
+		id,
+		leftBindingPower,
+		arity,
+		nud,
+		led,
+		value
+	};
+};
+
 const CTLOperators = ['A', 'E'];
 const LTLOperators = ['G', 'F', 'X', 'U', 'W', 'R'];
 const isCTLOperator = (value) => {
@@ -74,7 +85,8 @@ const translate = (tree) => {
 		}
 		else if (tree.value === 'EU') {
 			tree.left = translate(tree.left);
-			tree.left = translate(tree.right);
+			tree.right = translate(tree.right);
+			tree.arity = 2;
 		}
 		else if (tree.value === 'EF') {
 			// EF a  =  EU(TRUE, a)
@@ -207,166 +219,41 @@ const sanitize = function(ast) {
 	return newAst;
 };
 
-const prefixOperatorNudForParser = (parser) => {
-	return function() {
-		this.left = parser.expression(50);
-		return this;
-	};
+const prefixOperatorNud = function(expression) {
+	this.left = expression(4);
+	return this;
 };
 
-const ctlNudForParser = (parser) => {
-	return function() {
-		this.left = parser.expression(40);
-		// CTL operators must be followed immetiately by an LTL operator
-		if (!isLTLOperator(this.left.value)) {
-			throw SyntaxError(`Expected an LTL operator but found '${this.left.value}'.`);
-		}
-		return this;
-	};
+const ctlNud = function(expression) {
+	this.left = expression(4);
+	// CTL operators must be followed immediately by an LTL operator
+	if (!isLTLOperator(this.left.value)) {
+		throw SyntaxError(`Expected an LTL operator but found '${this.left.value}'.`);
+	}
+	return this;
 };
 
-const parenNudForParser = (parser) => {
-	return function() {
-		const expression = parser.expression(0);
-		parser.advance(')');
-		return expression;
-	};
+const parenNud = (expression, advance) => {
+	const e = expression(0);
+	advance(')');
+	return e;
 };
 
-const Parser = function() {
-	const parser = this;
-
-	this.token = null;
-	this.tokens = null;
-	this.tokenIndex = 0;
-	this.symbolTable = {};
-	this.symbol({ id: '(end)' });
-	this.symbol({ id: ')' });
-
-	this.symbol({
-		id: '(atom)',
-		nud: itself
-	});
-
-	this.rightAssociativeInfixOperator({ id: '->', leftBindingPower: 10 });
-	this.rightAssociativeInfixOperator({ id: '&', leftBindingPower: 20 });
-	this.rightAssociativeInfixOperator({ id: '|', leftBindingPower: 20 });
-	this.rightAssociativeInfixOperator({ id: 'U', leftBindingPower: 40 });
-	this.rightAssociativeInfixOperator({ id: 'R', leftBindingPower: 40 });
-	this.rightAssociativeInfixOperator({ id: 'W', leftBindingPower: 40 });
-
-	const ctlNud = ctlNudForParser(this);
-	this.prefixOperator({ id: 'E', nud: ctlNud });
-	this.prefixOperator({ id: 'A', nud: ctlNud });
-
-	const prefixOperatorNud = prefixOperatorNudForParser(this);
-	this.prefixOperator({ id: '!', nud: prefixOperatorNud });
-	this.prefixOperator({ id: 'F', nud: prefixOperatorNud });
-	this.prefixOperator({ id: 'G', nud: prefixOperatorNud });
-	this.prefixOperator({ id: 'X', nud: prefixOperatorNud });
-
-	const parenNud = parenNudForParser(this);
-	this.prefixOperator({ id: '(', nud: parenNud });
-};
-
-
-Parser.prototype.advance = function(expectedId) {
-	if (expectedId && this.token.id !== expectedId) {
-		let expectedString = `'${id}'`;
-		let foundString = `'${this.token.value}'`;
-
-		if (expectedId === '(end)') {
-			expectedString = 'end of input';
-		}
-		else if (this.token.value === '(end)') {
-			foundString = 'end of input';
-		}
-
-		throw SyntaxError(`Expected ${expString} but found ${foundString}`);
-	}
-
-	if (this.tokenIndex >= this.tokens.length) {
-		this.token = this.symbolTable['(end)'];
-		return null;
-	}
-
-	const token = this.tokens[this.tokenIndex];
-	const v = token.value;
-	const a = token.type;
-	let o;
-
-	this.tokenIndex += 1;
-
-	if (a === 'atom') {
-		o = this.symbolTable['(atom)'];
-	}
-	else if (a === 'operator') {
-		o = this.symbolTable[v];
-		if (!o) {
-			throw SyntaxError(`Expected an operator but found '${v}'.`);
-		}
-	} else {
-		throw SyntaxError(`Expected a token but found '{ type: ${a}, value: ${v} }'.`);
-	}
-
-	this.token = assign({}, o);
-	this.token.value = v;
-	return this.token;
-};
-
-Parser.prototype.expression = function(rightBindingPower) {
-	let token = this.token;
-	this.advance();
-
-	if (token.value === '(end)') {
-		throw SyntaxError('Unexpected end of input.');
-	}
-
-	let leftTree = token.nud();
-
-	while (rightBindingPower < this.token.leftBindingPower) {
-		let token = this.token;
-		this.advance();
-		leftTree = token.led(leftTree);
-	}
-
-	return leftTree;
-};
-
-Parser.prototype.symbol = function({ id = undefined, value = id, leftBindingPower = 0, arity = 0, nud = noarg, led = noarg }) {
-	const existingSymbol = this.symbolTable[id];
-	if (existingSymbol) {
-		existingSymbol.leftBindingPower = Math.max(leftBindingPower, existingSymbol.leftBindingPower);
-		return existingSymbol;
-	}
-	else {
-		return this.symbolTable[id] = {
-			id,
-			leftBindingPower,
-			arity,
-			nud,
-			led,
-			value
-		};
-	}
-};
-
-Parser.prototype.rightAssociativeInfixOperator = function({ id = '', leftBindingPower = 0 }) {
-	const parser = this;
-	return this.symbol({
+const rightAssociativeInfixOperator = ({ id = '', leftBindingPower = 0 }) => {
+	return Symbol({
 		id,
 		leftBindingPower,
 		arity: 2,
-		led: function(left) {
+		led: function(left, expression) {
 			this.left = left;
-			this.right = parser.expression(leftBindingPower - 1);
+			this.right = expression(leftBindingPower - 1);
 			return this;
 		}
 	});
 };
 
-Parser.prototype.prefixOperator = function({ id = '', nud = undefined }) {
-	return this.symbol({
+const prefixOperator = ({ id = '', nud = undefined }) => {
+	return Symbol({
 		id,
 		bindingPower: 0,
 		arity: 1,
@@ -374,14 +261,111 @@ Parser.prototype.prefixOperator = function({ id = '', nud = undefined }) {
 	});
 };
 
-Parser.prototype.parse = function(tokens) {
-	this.tokens = tokens;
-	this.tokenIndex = 0;
-	this.advance();
-	const ast = this.expression(0);
-	this.advance('(end)');
-	return ast;
-};
+const symbolTable = new Map(map([
+	Symbol({
+		id: '(atom)',
+		nud: itself
+	}),
+
+	rightAssociativeInfixOperator({ id: '->', leftBindingPower: 2 }),
+	rightAssociativeInfixOperator({ id: '&', leftBindingPower: 3 }),
+	rightAssociativeInfixOperator({ id: '|', leftBindingPower: 3 }),
+	rightAssociativeInfixOperator({ id: 'U', leftBindingPower: 1 }),
+	rightAssociativeInfixOperator({ id: 'R', leftBindingPower: 1 }),
+	rightAssociativeInfixOperator({ id: 'W', leftBindingPower: 1 }),
+
+	prefixOperator({ id: 'E', nud: ctlNud }),
+	prefixOperator({ id: 'A', nud: ctlNud }),
+
+	prefixOperator({ id: '!', nud: prefixOperatorNud }),
+	prefixOperator({ id: 'F', nud: prefixOperatorNud }),
+	prefixOperator({ id: 'G', nud: prefixOperatorNud }),
+	prefixOperator({ id: 'X', nud: prefixOperatorNud }),
+
+	prefixOperator({ id: '(', nud: parenNud }),
+	Symbol({ id: ')' }),
+
+	Symbol({ id: '(end)' })
+], (symbol) => {
+	return [symbol.id, symbol];
+}));
+
+class Parser {
+	constructor() {
+		this.token = null;
+		this.tokens = null;
+		this.tokenIndex = 0;
+
+		this.expression = this.expression.bind(this);
+		this.advance = this.advance.bind(this);
+	}
+
+	advance(expectedId) {
+		if (expectedId && this.token.id !== expectedId) {
+			let expectedString = `'${id}'`;
+			let foundString = `'${this.token.value}'`;
+
+			if (expectedId === '(end)') {
+				expectedString = 'end of input';
+			}
+			else if (this.token.value === '(end)') {
+				foundString = 'end of input';
+			}
+
+			throw SyntaxError(`Expected ${expString} but found ${foundString}`);
+		}
+
+		if (this.tokenIndex >= this.tokens.length) {
+			this.token = symbolTable.get('(end)');
+		}
+		else {
+			const token = this.tokens[this.tokenIndex];
+			this.tokenIndex += 1;
+			const value = token.value;
+			const type = token.type;
+
+			const symbol = (() => {
+				if (type === 'atom') {
+					return symbolTable.get('(atom)');
+				}
+				else {
+					return symbolTable.get(value);
+				}
+			})();
+
+			this.token = assign({}, symbol);
+			this.token.value = value;
+		}
+	}
+
+	expression(rightBindingPower) {
+		const token = this.token;
+		this.advance();
+
+		if (token.value === '(end)') {
+			throw SyntaxError('Unexpected end of input.');
+		}
+
+		let leftTree = token.nud(this.expression, this.advance);
+
+		while (rightBindingPower < this.token.leftBindingPower) {
+			const token = this.token;
+			this.advance();
+			leftTree = token.led(leftTree, this.expression);
+		}
+
+		return leftTree;
+	}
+
+	parse(tokens) {
+		this.tokens = tokens;
+		this.tokenIndex = 0;
+		this.advance();
+		const ast = this.expression(0);
+		this.advance('(end)');
+		return ast;
+	}
+}
 
 export default (data) => {
 	if ((typeof data) === 'string') {
