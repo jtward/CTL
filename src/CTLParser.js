@@ -302,7 +302,7 @@ class Parser {
 
 	advance(expectedId) {
 		if (expectedId && this.token.id !== expectedId) {
-			let expectedString = `'${id}'`;
+			let expectedString = `'${this.token.id}'`;
 			let foundString = `'${this.token.value}'`;
 
 			if (expectedId === '(end)') {
@@ -312,7 +312,7 @@ class Parser {
 				foundString = 'end of input';
 			}
 
-			throw SyntaxError(`Expected ${expString} but found ${foundString}`);
+			throw SyntaxError(`Expected ${expectedString} but found ${foundString}`);
 		}
 
 		if (this.tokenIndex >= this.tokens.length) {
