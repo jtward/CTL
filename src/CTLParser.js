@@ -8,6 +8,21 @@ const SyntaxError = (message) => {
 	};
 };
 
+const throwExpected = (expectedId, token) => {
+	let expectedString = `'${token.id}'`;
+	let foundString = `'${token.value}'`;
+
+	if (expectedId === '(end)') {
+		expectedString = 'end of input';
+	}
+	else if (token.value === '(end)') {
+		foundString = 'end of input';
+	}
+
+	throw SyntaxError(`Expected ${expectedString} but found ${foundString}`);
+};
+
+
 const UnaryOperator = (value, left) => {
 	return {
 		left,
@@ -30,21 +45,11 @@ const TRUE = {
 	value: '\\T'
 };
 
-const noarg = function() {
-	throw SyntaxError(`Missing argument to operator '${(this.value ? this.value : '')}'.`);
-};
-
-const itself = function() {
-	return this;
-};
-
-const Symbol = ({ id = undefined, value = id, leftBindingPower = 0, arity = 0, nud = noarg, led = noarg }) => {
+const Symbol = ({ id = undefined, value = id, leftBindingPower = 0, arity = 0 }) => {
 	return {
 		id,
 		leftBindingPower,
 		arity,
-		nud,
-		led,
 		value
 	};
 };
@@ -57,6 +62,7 @@ const isCTLOperator = (value) => {
 const isLTLOperator = (value) => {
 	return includes(LTLOperators, value);
 };
+
 const combineOps = function(tree) {
 	if (tree) {
 		// Combine CTL-LTL operator pairs into single tokens.
@@ -219,138 +225,87 @@ const sanitize = function(ast) {
 	return newAst;
 };
 
-const prefixOperatorNud = function(expression) {
-	this.left = expression(4);
-	return this;
-};
-
-const ctlNud = function(expression) {
-	this.left = expression(4);
-	// CTL operators must be followed immediately by an LTL operator
-	if (!isLTLOperator(this.left.value)) {
-		throw SyntaxError(`Expected an LTL operator but found '${this.left.value}'.`);
+const nud = (token, expression, advance) => {
+	if (token.id === '(atom)') {
+		return token;
 	}
-	return this;
+	else if (token.id === '(') {
+		const e = expression(0);
+		advance(')');
+		return e;
+	}
+	else if (token.arity === 1) {
+		token.left = expression(4);
+		return token;
+	}
+	else {
+		throw SyntaxError(`Missing argument to operator '${(token.value ? token.value : '')}'.`);
+	}
 };
 
-const parenNud = (expression, advance) => {
-	const e = expression(0);
-	advance(')');
-	return e;
-};
-
-const rightAssociativeInfixOperator = ({ id = '', leftBindingPower = 0 }) => {
-	return Symbol({
-		id,
-		leftBindingPower,
-		arity: 2,
-		led: function(left, expression) {
-			this.left = left;
-			this.right = expression(leftBindingPower - 1);
-			return this;
-		}
-	});
-};
-
-const prefixOperator = ({ id = '', nud = undefined }) => {
-	return Symbol({
-		id,
-		bindingPower: 0,
-		arity: 1,
-		nud
-	});
+const led = (token, left, expression) => {
+	token.left = left;
+	token.right = expression(token.leftBindingPower - 1);
+	return token;
 };
 
 const symbolTable = new Map(map([
-	Symbol({
-		id: '(atom)',
-		nud: itself
-	}),
-
-	rightAssociativeInfixOperator({ id: '->', leftBindingPower: 2 }),
-	rightAssociativeInfixOperator({ id: '&', leftBindingPower: 3 }),
-	rightAssociativeInfixOperator({ id: '|', leftBindingPower: 3 }),
-	rightAssociativeInfixOperator({ id: 'U', leftBindingPower: 1 }),
-	rightAssociativeInfixOperator({ id: 'R', leftBindingPower: 1 }),
-	rightAssociativeInfixOperator({ id: 'W', leftBindingPower: 1 }),
-
-	prefixOperator({ id: 'E', nud: ctlNud }),
-	prefixOperator({ id: 'A', nud: ctlNud }),
-
-	prefixOperator({ id: '!', nud: prefixOperatorNud }),
-	prefixOperator({ id: 'F', nud: prefixOperatorNud }),
-	prefixOperator({ id: 'G', nud: prefixOperatorNud }),
-	prefixOperator({ id: 'X', nud: prefixOperatorNud }),
-
-	prefixOperator({ id: '(', nud: parenNud }),
-	Symbol({ id: ')' }),
-
-	Symbol({ id: '(end)' })
+	{ id: '(atom)' },
+	{ id: '&', arity: 2, leftBindingPower: 3 },
+	{ id: '|', arity: 2, leftBindingPower: 3 },
+	{ id: '->', arity: 2, leftBindingPower: 2 },
+	{ id: 'U', arity: 2, leftBindingPower: 1 },
+	{ id: 'R', arity: 2, leftBindingPower: 1 },
+	{ id: 'W', arity: 2, leftBindingPower: 1 },
+	{ id: 'E', arity: 1 },
+	{ id: 'A', arity: 1 },
+	{ id: '!', arity: 1 },
+	{ id: 'F', arity: 1 },
+	{ id: 'G', arity: 1 },
+	{ id: 'X', arity: 1 },
+	{ id: '(', arity: 1 },
+	{ id: ')' },
+	{ id: '(end)' }
 ], (symbol) => {
-	return [symbol.id, symbol];
+	return [symbol.id, Symbol(symbol)];
 }));
 
 const parse = (tokens) => {
-	let token = null;
-	let tokenIndex = 0;
+	let token = tokens[0];
 
 	const advance = (expectedId) => {
 		if (expectedId && token.id !== expectedId) {
-			let expectedString = `'${token.id}'`;
-			let foundString = `'${token.value}'`;
-
-			if (expectedId === '(end)') {
-				expectedString = 'end of input';
-			}
-			else if (token.value === '(end)') {
-				foundString = 'end of input';
-			}
-
-			throw SyntaxError(`Expected ${expectedString} but found ${foundString}`);
+			throwExpected(expectedId, token);
 		}
-
-		if (tokenIndex >= tokens.length) {
-			token = symbolTable.get('(end)');
-		}
-		else {
-			const { type, value } = tokens[tokenIndex];
-			tokenIndex += 1;
-
-			const symbol = (() => {
-				if (type === 'atom') {
-					return symbolTable.get('(atom)');
-				}
-				else {
-					return symbolTable.get(value);
-				}
-			})();
-
-			token = assign({}, symbol);
+		else if (tokens.length) {
+			const { type, value } = tokens.shift();
+			token = assign({}, symbolTable.get(type === 'atom' ? '(atom)' : value));
+			// set the value of the token for atoms
 			token.value = value;
 		}
+		else {
+			token = symbolTable.get('(end)');
+		}
 	};
-
 
 	const expression = (rightBindingPower) => {
-		const t = token;
-		if (t.value === '(end)') {
+		if (token.value === '(end)') {
 			throw SyntaxError('Unexpected end of input.');
 		}
-
-		advance();
-
-		let leftTree = t.nud(expression, advance);
-
-		while (rightBindingPower < token.leftBindingPower) {
-			const tk = token;
+		else {
+			const t = token;
 			advance();
-			leftTree = tk.led(leftTree, expression);
-		}
+			let leftTree = nud(t, expression, advance);
+			while (rightBindingPower < token.leftBindingPower) {
+				const tk = token;
+				advance();
+				leftTree = led(tk, leftTree, expression);
+			}
 
-		return leftTree;
+			return leftTree;
+		}
 	};
 
-	token = tokens[tokenIndex];
 	advance();
 	const ast = expression(0);
 	advance('(end)');
