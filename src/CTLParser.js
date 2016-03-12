@@ -290,39 +290,31 @@ const symbolTable = new Map(map([
 	return [symbol.id, symbol];
 }));
 
-class Parser {
-	constructor() {
-		this.token = null;
-		this.tokens = null;
-		this.tokenIndex = 0;
+const parse = (tokens) => {
+	let token = null;
+	let tokenIndex = 0;
 
-		this.expression = this.expression.bind(this);
-		this.advance = this.advance.bind(this);
-	}
-
-	advance(expectedId) {
-		if (expectedId && this.token.id !== expectedId) {
-			let expectedString = `'${this.token.id}'`;
-			let foundString = `'${this.token.value}'`;
+	const advance = (expectedId) => {
+		if (expectedId && token.id !== expectedId) {
+			let expectedString = `'${token.id}'`;
+			let foundString = `'${token.value}'`;
 
 			if (expectedId === '(end)') {
 				expectedString = 'end of input';
 			}
-			else if (this.token.value === '(end)') {
+			else if (token.value === '(end)') {
 				foundString = 'end of input';
 			}
 
 			throw SyntaxError(`Expected ${expectedString} but found ${foundString}`);
 		}
 
-		if (this.tokenIndex >= this.tokens.length) {
-			this.token = symbolTable.get('(end)');
+		if (tokenIndex >= tokens.length) {
+			token = symbolTable.get('(end)');
 		}
 		else {
-			const token = this.tokens[this.tokenIndex];
-			this.tokenIndex += 1;
-			const value = token.value;
-			const type = token.type;
+			const { type, value } = tokens[tokenIndex];
+			tokenIndex += 1;
 
 			const symbol = (() => {
 				if (type === 'atom') {
@@ -333,43 +325,40 @@ class Parser {
 				}
 			})();
 
-			this.token = assign({}, symbol);
-			this.token.value = value;
+			token = assign({}, symbol);
+			token.value = value;
 		}
-	}
+	};
 
-	expression(rightBindingPower) {
-		const token = this.token;
-		this.advance();
 
-		if (token.value === '(end)') {
+	const expression = (rightBindingPower) => {
+		const t = token;
+		if (t.value === '(end)') {
 			throw SyntaxError('Unexpected end of input.');
 		}
 
-		let leftTree = token.nud(this.expression, this.advance);
+		advance();
 
-		while (rightBindingPower < this.token.leftBindingPower) {
-			const token = this.token;
-			this.advance();
-			leftTree = token.led(leftTree, this.expression);
+		let leftTree = t.nud(expression, advance);
+
+		while (rightBindingPower < token.leftBindingPower) {
+			const tk = token;
+			advance();
+			leftTree = tk.led(leftTree, expression);
 		}
 
 		return leftTree;
-	}
+	};
 
-	parse(tokens) {
-		this.tokens = tokens;
-		this.tokenIndex = 0;
-		this.advance();
-		const ast = this.expression(0);
-		this.advance('(end)');
-		return ast;
-	}
-}
+	token = tokens[tokenIndex];
+	advance();
+	const ast = expression(0);
+	advance('(end)');
+	return(ast);
+};
 
 export default (data) => {
-	if ((typeof data) === 'string') {
-		data = tokenize(data);
-	}
-	return sanitize(translate(combineOps(new Parser().parse(data))));
+	const tokens = typeof data === 'string' ? tokenize(data) : data;
+
+	return sanitize(translate(combineOps(parse(tokens))));
 };
