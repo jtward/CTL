@@ -16,38 +16,26 @@ const throwExpected = (expectedId, token) => {
 	throw SyntaxError(`Expected ${expectedString} but found ${foundString}`);
 };
 
-const unaryOperator = (value) => {
-	return (left) => {
+const operator = (value) => {
+	return (...subtrees) => {
 		return {
-			left,
 			value,
-			arity: 1
-		};
-	};
-};
-
-const binaryOperator = (value) => {
-	return (left, right) => {
-		return {
-			left,
-			right,
-			value,
-			arity: 2
-		};
+			subtrees
+		}
 	};
 };
 
 const TRUE = {
-	arity: 0,
-	value: '\\T'
+	value: '\\T',
+	subtrees: []
 };
 
-const _AND = binaryOperator('&');
-const _OR = binaryOperator('|');
-const _EU = binaryOperator('EU');
-const _NOT = unaryOperator('!');
-const _EX = unaryOperator('EX');
-const _EG = unaryOperator('EG');
+const _AND = operator('&');
+const _OR = operator('|');
+const _EU = operator('EU');
+const _NOT = operator('!');
+const _EX = operator('EX');
+const _EG = operator('EG');
 
 const Symbol = ({ id = undefined, value = id, leftBindingPower = 0, arity = 0 }) => {
 	return {
@@ -70,18 +58,18 @@ const isLTLOperator = (value) => {
 // combine CTL-LTL operator pairs into single tokens
 // Throw a syntax error if the pairs are not matched.
 const combineOps = function(tree) {
-	if (tree.arity === 0) {
+	if (tree.subtrees.length === 0) {
 		return tree;
 	}
 	else if (isCTLOperator(tree.value)) {
-		const value = `${tree.value}${tree.left.value}`;
-		if (tree.left.right) {
-			return binaryOperator(value)(
-				combineOps(tree.left.left),
-				combineOps(tree.left.right));
+		const value = `${tree.value}${tree.subtrees[0].value}`;
+		if (tree.subtrees[0].subtrees.length === 2) {
+			return operator(value)(
+				combineOps(tree.subtrees[0].subtrees[0]),
+				combineOps(tree.subtrees[0].subtrees[1]));
 		}
 		else {
-			return unaryOperator(value)(combineOps(tree.left.left));
+			return operator(value)(combineOps(tree.subtrees[0].subtrees[0]));
 		}
 	}
 	else if (isLTLOperator(tree.value)) {
@@ -90,67 +78,65 @@ const combineOps = function(tree) {
 	else {
 		return {
 			value: tree.value,
-			arity: tree.arity,
-			left: combineOps(tree.left),
-			right: tree.arity > 1 ? combineOps(tree.right) : undefined
+			subtrees: map(tree.subtrees, combineOps)
 		};
 	}
 };
 
 const translate = (tree) => {
-	if (tree.arity) {
+	if (tree.subtrees.length) {
 		if (tree.value === 'EX' || tree.value === 'EG') {
-			tree.left = translate(tree.left);
+			return {
+				value: tree.value,
+				subtrees: map(tree.subtrees, translate)
+			};
 		}
 		else if (tree.value === 'EU') {
-			tree.left = translate(tree.left);
-			tree.right = translate(tree.right);
-			tree.arity = 2;
+			return {
+				value: tree.value,
+				subtrees: map(tree.subtrees, translate)
+			};
 		}
 		else if (tree.value === 'EF') {
 			// EF a = EU(TRUE, a)
-			const a = translate(tree.left);
-			tree = _EU(TRUE, a);
+			const a = translate(tree.subtrees[0]);
+			return _EU(TRUE, a);
 		}
 		else if (tree.value === 'ER') {
 			// ER(a, b) = !AU(!a, !b)
 			//          = EU(b, a&b) & !EG(b)
-			const a = translate(tree.left);
-			const b = translate(tree.right);
-
-			tree = _AND(_EU(b, _AND(a, b)), _NOT(_EG(b)));
-
+			const [a, b] = map(tree.subtrees, translate);
+			return _AND(_EU(b, _AND(a, b)), _NOT(_EG(b)));
 		}
 		else if (tree.value === 'EW') {
 			// EW(a, b) = !ER(b, a|b)
 			//          = EU(a|b, b&(a|b)) & !EG(a|b)
 			//          = EU(a|b, b) & !EG(a|b)
-			const a = translate(tree.left);
-			const b = translate(tree.right);
-			tree = _AND(_EU(_OR(a, b), b), _NOT(_EG(_OR(a, b))));
+			const [a, b] = map(tree.subtrees, translate);
+			return _AND(_EU(_OR(a, b), b), _NOT(_EG(_OR(a, b))));
 		}
 		else if (tree.value === 'AX') {
 			// AX(a) = !EX(!a)
 			// do the negation before translating to catch double negations
-			tree = _NOT(_EX(translate(_NOT(tree.left))));
+			return _NOT(_EX(translate(_NOT(tree.subtrees[0]))));
 		}
 		else if (tree.value === 'AG') {
 			// AG(a) = !EF(!a)
 			//       = !EU(T, !a)
-			const notA = translate(_NOT(tree.left));
-			tree = _NOT(_EU(TRUE, notA));
+			const notA = translate(_NOT(tree.subtrees[0]));
+			return _NOT(_EU(TRUE, notA));
 		}
 		else if (tree.value === 'AF') {
 			// AF(a) = !EG(!a)
-			tree = _NOT(_EG(translate(_NOT(tree.left))));
+			return _NOT(_EG(translate(_NOT(tree.subtrees[0]))));
 		}
 		else if (tree.value === 'AU') {
 			// AU(a, b) = !EU(!b, !a & !b) | EG(!b)
-			const notA = translate(_NOT(tree.left));
-			const notB = translate(_NOT(tree.right));
+			const [notA, notB] = map(tree.subtrees, (subtree) => {
+				return translate(_NOT(subtree));
+			});
 
-			tree =
-				_OR(
+			return _OR(
 					_NOT(
 						_EU(
 							notB,
@@ -159,66 +145,75 @@ const translate = (tree) => {
 		}
 		else if (tree.value === 'AR') {
 			// AU(a, b) = !EU(!a, !b)
-			const notA = translate(_NOT(tree.left));
-			const notB = translate(_NOT(tree.right));
-			tree =
-				_NOT(
+			const [notA, notB] = map(tree.subtrees, (subtree) => {
+				return translate(_NOT(subtree));
+			});
+
+			return _NOT(
 					_EU(
 						notA,
 						notB));
 		}
 		else if (tree.value === 'AW') {
 			// AW(a, b) = !EU(!b, !a & !b)
-			const notA = translate(_NOT(tree.left));
-			const notB = translate(_NOT(tree.right));
-			tree = _NOT(_EU(notB, _AND(notA, notB)));
+			const [notA, notB] = map(tree.subtrees, (subtree) => {
+				return translate(_NOT(subtree));
+			});
+
+			return _NOT(_EU(notB, _AND(notA, notB)));
 		}
 		else if (tree.value === '!') {
-			if (tree.left.value === '!') {
+			if (tree.subtrees[0].value === '!') {
 				// remove any number of double negations.
 				while (tree.value === '!' &&
-					tree.left.value === '!') {
-					tree = tree.left.left;
+					tree.subtrees[0].value === '!') {
+					tree = tree.subtrees[0].subtrees[0];
 				}
-				tree = translate(tree);
+				return translate(tree);
 			}
 			else {
-				tree.left = translate(tree.left);
+				return _NOT(translate(tree.subtrees[0]));
 			}
 		}
-		else if (tree.arity === 2) {
-			tree.left = translate(tree.left);
-			tree.right = translate(tree.right);
-		}
 		else {
-			throw SyntaxError(`Expected an operator but found '${tree.value}'.`);
+			return {
+				value: tree.value,
+				subtrees: map(tree.subtrees, translate)
+			};
 		}
 	}
-	return tree;
+	else {
+		return tree;
+	}
 };
 
 const nud = (token, expression, advance) => {
-	if (token.id === '(atom)') {
-		return token;
-	}
-	else if (token.id === '(') {
+	if (token.id === '(') {
 		const e = expression(0);
 		advance(')');
 		return e;
 	}
-	else if (token.arity === 1) {
-		token.left = expression(40);
-		return token;
+	else if (token.arity <= 1) {
+		return {
+			id: token.id,
+			value: token.value,
+			subtrees: token.arity === 0 ? [] : [expression(40)]
+		};
 	}
 	else {
 		throw SyntaxError(`Missing argument to operator '${(token.value ? token.value : '')}'.`);
 	}
 };
 
-const led = (token, left, expression) => {
-	token.left = left;
-	token.right = expression(token.leftBindingPower - 1);
-	return token;
+const led = (token, leftSubtree, expression) => {
+	return {
+		id: token.id,
+		value: token.value,
+		subtrees: [
+			leftSubtree,
+			expression(token.leftBindingPower - 1)
+		]
+	};
 };
 
 const symbolTable = new Map(map([
@@ -249,12 +244,17 @@ const parse = (tokens) => {
 		if (expectedId && token.id !== expectedId) {
 			throwExpected(expectedId, token);
 		}
-		
+
 		if (tokens.length) {
 			const { type, value } = tokens.shift();
-			token = assign({}, symbolTable.get(type === 'atom' ? '(atom)' : value));
-			// set the value of the token for atoms
-			token.value = value;
+			const t = symbolTable.get(type === 'atom' ? '(atom)' : value);
+			token = {
+				id: t.id,
+				value,
+				subtrees: [],
+				leftBindingPower: t.leftBindingPower,
+				arity: t.arity
+			};
 		}
 		else {
 			token = symbolTable.get('(end)');
@@ -268,14 +268,14 @@ const parse = (tokens) => {
 
 		const t = token;
 		advance();
-		let leftTree = nud(t, expression, advance);
+		let parseTree = nud(t, expression, advance);
 		while (rightBindingPower < token.leftBindingPower) {
 			const t = token;
 			advance();
-			leftTree = led(t, leftTree, expression);
+			parseTree = led(t, parseTree, expression);
 		}
 
-		return leftTree;
+		return parseTree;
 	};
 
 	advance();

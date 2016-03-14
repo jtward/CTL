@@ -4,7 +4,7 @@ import CTL from '../src/CTL';
 
 const aAtom = (value) => {
 	return (ast) => {
-		assert.equal(ast.arity, 0);
+		assert.deepEqual(ast.subtrees, []);
 		assert.equal(ast.value, value);
 		assert.equal(ast.left, undefined);
 		assert.equal(ast.right, undefined);
@@ -14,26 +14,15 @@ const aAtom = (value) => {
 const opAsserter = (arity, value) => {
 	const asserter = (...asserts) => {
 		return (ast) => {
-			assert.equal(ast.arity, arity);
 			assert.equal(ast.value, value);
-			if (arity > 0) {
-				assert.equal(typeof ast.left, 'object');
-				if (typeof asserts[0] === 'function') {
-					asserts[0](ast.left);
+			each(asserts, (asserter, index) => {
+				if (typeof asserter === 'function') {
+					asserter(ast.subtrees[index]);
 				}
-				else if (typeof asserts[0] === 'object') {
-					assert.deepEqual(asserts[0], ast.left);
+				else if (typeof asserter === 'object') {
+					assert.deepEqual(asserter, ast.subtrees[index]);
 				}
-			}
-			if (arity > 1) {
-				assert.equal(typeof ast.right, 'object');
-				if (typeof asserts[1] === 'function') {
-					asserts[1](ast.right);
-				}
-				else if (typeof asserts[1] === 'object') {
-					assert.deepEqual(asserts[1], ast.right);
-				}
-			}
+			});
 		};
 	};
 	asserter.arity = arity;
