@@ -9,34 +9,31 @@ const SyntaxError = (message) => {
 };
 
 const throwExpected = (expectedId, token) => {
-	let expectedString = `'${token.id}'`;
-	let foundString = `'${token.value}'`;
-
-	if (expectedId === '(end)') {
-		expectedString = 'end of input';
-	}
-	else if (token.value === '(end)') {
-		foundString = 'end of input';
-	}
+	const end = 'end of input';
+	const expectedString = (expectedId === '(end)') ? end : `'${token.id}'`;
+	const foundString = (token.value === '(end)') ? end : `'${token.value}'`;
 
 	throw SyntaxError(`Expected ${expectedString} but found ${foundString}`);
 };
 
-
-const UnaryOperator = (value, left) => {
-	return {
-		left,
-		value,
-		arity: 1
+const unaryOperator = (value) => {
+	return (left) => {
+		return {
+			left,
+			value,
+			arity: 1
+		};
 	};
 };
 
-const BinaryOperator = (value, left, right) => {
-	return {
-		left,
-		right,
-		value,
-		arity: 2
+const binaryOperator = (value) => {
+	return (left, right) => {
+		return {
+			left,
+			right,
+			value,
+			arity: 2
+		};
 	};
 };
 
@@ -44,6 +41,13 @@ const TRUE = {
 	arity: 0,
 	value: '\\T'
 };
+
+const _AND = binaryOperator('&');
+const _OR = binaryOperator('|');
+const _EU = binaryOperator('EU');
+const _NOT = unaryOperator('!');
+const _EX = unaryOperator('EX');
+const _EG = unaryOperator('EG');
 
 const Symbol = ({ id = undefined, value = id, leftBindingPower = 0, arity = 0 }) => {
 	return {
@@ -63,25 +67,34 @@ const isLTLOperator = (value) => {
 	return includes(LTLOperators, value);
 };
 
+// combine CTL-LTL operator pairs into single tokens
+// Throw a syntax error if the pairs are not matched.
 const combineOps = function(tree) {
-	if (tree) {
-		// Combine CTL-LTL operator pairs into single tokens.
-		// Throw a syntax error if the pairs are not matched.
-		if (isCTLOperator(tree.value)) {
-			tree.value = `${tree.value}${tree.left.value}`;
-			if (tree.left.right) {
-				tree.right = tree.left.right;
-			}
-			tree.left = tree.left.left;
-		}
-		else if (isLTLOperator(tree.value)) {
-			throw SyntaxError(`Expected a CTL operator but found '${tree.value}'.`);
-		}
-
-		tree.left = combineOps(tree.left);
-		tree.right = combineOps(tree.right);
+	if (tree.arity === 0) {
+		return tree;
 	}
-	return tree;
+	else if (isCTLOperator(tree.value)) {
+		const value = `${tree.value}${tree.left.value}`;
+		if (tree.left.right) {
+			return binaryOperator(value)(
+				combineOps(tree.left.left),
+				combineOps(tree.left.right));
+		}
+		else {
+			return unaryOperator(value)(combineOps(tree.left.left));
+		}
+	}
+	else if (isLTLOperator(tree.value)) {
+		throw SyntaxError(`Expected a CTL operator but found '${tree.value}'.`);
+	}
+	else {
+		return {
+			value: tree.value,
+			arity: tree.arity,
+			left: combineOps(tree.left),
+			right: tree.arity > 1 ? combineOps(tree.right) : undefined
+		};
+	}
 };
 
 const translate = (tree) => {
@@ -95,23 +108,18 @@ const translate = (tree) => {
 			tree.arity = 2;
 		}
 		else if (tree.value === 'EF') {
-			// EF a  =  EU(TRUE, a)
-			tree = BinaryOperator('EU', TRUE, translate(tree.left));
+			// EF a = EU(TRUE, a)
+			const a = translate(tree.left);
+			tree = _EU(TRUE, a);
 		}
 		else if (tree.value === 'ER') {
 			// ER(a, b) = !AU(!a, !b)
 			//          = EU(b, a&b) & !EG(b)
 			const a = translate(tree.left);
 			const b = translate(tree.right);
-			tree = BinaryOperator(
-				'&',
-				BinaryOperator(
-					'EU',
-					b,
-					BinaryOperator('&', a, b)),
-				UnaryOperator(
-					'!',
-					UnaryOperator('EG', b)));
+
+			tree = _AND(_EU(b, _AND(a, b)), _NOT(_EG(b)));
+
 		}
 		else if (tree.value === 'EW') {
 			// EW(a, b) = !ER(b, a|b)
@@ -119,74 +127,51 @@ const translate = (tree) => {
 			//          = EU(a|b, b) & !EG(a|b)
 			const a = translate(tree.left);
 			const b = translate(tree.right);
-			tree = BinaryOperator(
-				'&',
-				BinaryOperator(
-					'EU',
-					BinaryOperator('|', a, b),
-					b),
-				UnaryOperator(
-					'!',
-					UnaryOperator(
-						'EG',
-						BinaryOperator('|', a, b))));
+			tree = _AND(_EU(_OR(a, b), b), _NOT(_EG(_OR(a, b))));
 		}
 		else if (tree.value === 'AX') {
 			// AX(a) = !EX(!a)
 			// do the negation before translating to catch double negations
-			tree = UnaryOperator(
-				'!',
-				UnaryOperator(
-					'EX',
-					translate(UnaryOperator('!', tree.left))));
+			tree = _NOT(_EX(translate(_NOT(tree.left))));
 		}
 		else if (tree.value === 'AG') {
 			// AG(a) = !EF(!a)
 			//       = !EU(T, !a)
-			// do the negation before translating to catch double negations
-			tree = UnaryOperator(
-				'!',
-				BinaryOperator('EU', TRUE, translate(UnaryOperator('!', tree.left))));
+			const notA = translate(_NOT(tree.left));
+			tree = _NOT(_EU(TRUE, notA));
 		}
 		else if (tree.value === 'AF') {
 			// AF(a) = !EG(!a)
-			tree = UnaryOperator(
-				'!',
-				UnaryOperator('EG', translate(UnaryOperator('!', tree.left))));
+			tree = _NOT(_EG(translate(_NOT(tree.left))));
 		}
 		else if (tree.value === 'AU') {
 			// AU(a, b) = !EU(!b, !a & !b) | EG(!b)
-			const a = translate(UnaryOperator('!', tree.left));
-			const b = translate(UnaryOperator('!', tree.right));
-			tree = BinaryOperator(
-				'|',
-				UnaryOperator(
-					'!',
-					BinaryOperator(
-						'EU',
-						b,
-						BinaryOperator('&', a, b))),
-				UnaryOperator('EG', b));
+			const notA = translate(_NOT(tree.left));
+			const notB = translate(_NOT(tree.right));
+
+			tree =
+				_OR(
+					_NOT(
+						_EU(
+							notB,
+							_AND(notA, notB))),
+					_EG(notB));
 		}
 		else if (tree.value === 'AR') {
 			// AU(a, b) = !EU(!a, !b)
-			tree = UnaryOperator(
-				'!',
-				BinaryOperator(
-					'EU',
-					translate(UnaryOperator('!', tree.left)),
-					translate(UnaryOperator('!', tree.right))));
+			const notA = translate(_NOT(tree.left));
+			const notB = translate(_NOT(tree.right));
+			tree =
+				_NOT(
+					_EU(
+						notA,
+						notB));
 		}
 		else if (tree.value === 'AW') {
 			// AW(a, b) = !EU(!b, !a & !b)
-			const a = translate(UnaryOperator('!', tree.left));
-			const b = translate(UnaryOperator('!', tree.right));
-			tree = UnaryOperator(
-				'!',
-				BinaryOperator(
-					'EU',
-					b,
-					BinaryOperator('&', a, b)));
+			const notA = translate(_NOT(tree.left));
+			const notB = translate(_NOT(tree.right));
+			tree = _NOT(_EU(notB, _AND(notA, notB)));
 		}
 		else if (tree.value === '!') {
 			if (tree.left.value === '!') {
@@ -201,7 +186,7 @@ const translate = (tree) => {
 				tree.left = translate(tree.left);
 			}
 		}
-		else if (tree.value === '&' || tree.value === '|' || tree.value === '->') {
+		else if (tree.arity === 2) {
 			tree.left = translate(tree.left);
 			tree.right = translate(tree.right);
 		}
@@ -210,19 +195,6 @@ const translate = (tree) => {
 		}
 	}
 	return tree;
-};
-
-const sanitize = function(ast) {
-	const newAst = {};
-	if (ast.left) {
-		newAst.left = sanitize(ast.left);
-	}
-	if (ast.right) {
-		newAst.right = sanitize(ast.right);
-	}
-	newAst.value = ast.value;
-	newAst.arity = ast.arity;
-	return newAst;
 };
 
 const nud = (token, expression, advance) => {
@@ -235,7 +207,7 @@ const nud = (token, expression, advance) => {
 		return e;
 	}
 	else if (token.arity === 1) {
-		token.left = expression(4);
+		token.left = expression(40);
 		return token;
 	}
 	else {
@@ -251,12 +223,12 @@ const led = (token, left, expression) => {
 
 const symbolTable = new Map(map([
 	{ id: '(atom)' },
-	{ id: '&', arity: 2, leftBindingPower: 3 },
-	{ id: '|', arity: 2, leftBindingPower: 3 },
-	{ id: '->', arity: 2, leftBindingPower: 2 },
-	{ id: 'U', arity: 2, leftBindingPower: 1 },
-	{ id: 'R', arity: 2, leftBindingPower: 1 },
-	{ id: 'W', arity: 2, leftBindingPower: 1 },
+	{ id: '&', arity: 2, leftBindingPower: 30 },
+	{ id: '|', arity: 2, leftBindingPower: 30 },
+	{ id: '->', arity: 2, leftBindingPower: 20 },
+	{ id: 'U', arity: 2, leftBindingPower: 10 },
+	{ id: 'R', arity: 2, leftBindingPower: 10 },
+	{ id: 'W', arity: 2, leftBindingPower: 10 },
 	{ id: 'E', arity: 1 },
 	{ id: 'A', arity: 1 },
 	{ id: '!', arity: 1 },
@@ -277,7 +249,8 @@ const parse = (tokens) => {
 		if (expectedId && token.id !== expectedId) {
 			throwExpected(expectedId, token);
 		}
-		else if (tokens.length) {
+		
+		if (tokens.length) {
 			const { type, value } = tokens.shift();
 			token = assign({}, symbolTable.get(type === 'atom' ? '(atom)' : value));
 			// set the value of the token for atoms
@@ -292,18 +265,17 @@ const parse = (tokens) => {
 		if (token.value === '(end)') {
 			throw SyntaxError('Unexpected end of input.');
 		}
-		else {
+
+		const t = token;
+		advance();
+		let leftTree = nud(t, expression, advance);
+		while (rightBindingPower < token.leftBindingPower) {
 			const t = token;
 			advance();
-			let leftTree = nud(t, expression, advance);
-			while (rightBindingPower < token.leftBindingPower) {
-				const tk = token;
-				advance();
-				leftTree = led(tk, leftTree, expression);
-			}
-
-			return leftTree;
+			leftTree = led(t, leftTree, expression);
 		}
+
+		return leftTree;
 	};
 
 	advance();
@@ -315,5 +287,5 @@ const parse = (tokens) => {
 export default (data) => {
 	const tokens = typeof data === 'string' ? tokenize(data) : data;
 
-	return sanitize(translate(combineOps(parse(tokens))));
+	return translate(combineOps(parse(tokens)));
 };
