@@ -63,14 +63,7 @@ const combineOps = function(tree) {
 	}
 	else if (isCTLOperator(tree.value)) {
 		const value = `${tree.value}${tree.subtrees[0].value}`;
-		if (tree.subtrees[0].subtrees.length === 2) {
-			return operator(value)(
-				combineOps(tree.subtrees[0].subtrees[0]),
-				combineOps(tree.subtrees[0].subtrees[1]));
-		}
-		else {
-			return operator(value)(combineOps(tree.subtrees[0].subtrees[0]));
-		}
+		return operator(value)(...map(tree.subtrees[0].subtrees, combineOps));
 	}
 	else if (isLTLOperator(tree.value)) {
 		throw SyntaxError(`Expected a CTL operator but found '${tree.value}'.`);
