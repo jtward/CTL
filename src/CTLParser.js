@@ -27,7 +27,7 @@ const operator = (value) => {
 
 const TRUE = {
 	value: '\\T',
-	subtrees: []
+	subtrees: undefined
 };
 
 const _AND = operator('&');
@@ -58,26 +58,28 @@ const isLTLOperator = (value) => {
 // combine CTL-LTL operator pairs into single tokens
 // Throw a syntax error if the pairs are not matched.
 const combineOps = function(tree) {
-	if (tree.subtrees.length === 0) {
-		return tree;
-	}
-	else if (isCTLOperator(tree.value)) {
-		const value = `${tree.value}${tree.subtrees[0].value}`;
-		return operator(value)(...map(tree.subtrees[0].subtrees, combineOps));
-	}
-	else if (isLTLOperator(tree.value)) {
-		throw SyntaxError(`Expected a CTL operator but found '${tree.value}'.`);
+	if (tree.subtrees) {
+		if (isCTLOperator(tree.value)) {
+			const value = `${tree.value}${tree.subtrees[0].value}`;
+			return operator(value)(...map(tree.subtrees[0].subtrees, combineOps));
+		}
+		else if (isLTLOperator(tree.value)) {
+			throw SyntaxError(`Expected a CTL operator but found '${tree.value}'.`);
+		}
+		else {
+			return {
+				value: tree.value,
+				subtrees: map(tree.subtrees, combineOps)
+			};
+		}
 	}
 	else {
-		return {
-			value: tree.value,
-			subtrees: map(tree.subtrees, combineOps)
-		};
+		return tree;
 	}
 };
 
 const translate = (tree) => {
-	if (tree.subtrees.length) {
+	if (tree.subtrees) {
 		if (tree.value === 'EX' || tree.value === 'EG') {
 			return {
 				value: tree.value,
@@ -190,7 +192,7 @@ const nud = (token, expression, advance) => {
 		return {
 			id: token.id,
 			value: token.value,
-			subtrees: token.arity === 0 ? [] : [expression(40)]
+			subtrees: token.arity === 0 ? undefined : [expression(40)]
 		};
 	}
 	else {
@@ -244,7 +246,7 @@ const parse = (tokens) => {
 			token = {
 				id: t.id,
 				value,
-				subtrees: [],
+				subtrees: type === 'atom' ? undefined : [],
 				leftBindingPower: t.leftBindingPower,
 				arity: t.arity
 			};

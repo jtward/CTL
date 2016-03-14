@@ -4,10 +4,8 @@ import CTL from '../src/CTL';
 
 const aAtom = (value) => {
 	return (ast) => {
-		assert.deepEqual(ast.subtrees, []);
+		assert.equal(ast.subtrees, undefined);
 		assert.equal(ast.value, value);
-		assert.equal(ast.left, undefined);
-		assert.equal(ast.right, undefined);
 	};
 };
 
