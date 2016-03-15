@@ -28,32 +28,32 @@ Checker.prototype.check = function(model, expression) {
 };
 
 Checker.prototype.SAT = function(expression) {
-	if (expression.arity) {
+	if (expression.subtrees) {
 		switch (expression.value) {
 		case '!':
 			return without(
 				this.states,
-				this.SAT(expression.left));
+				this.SAT(expression.subtrees[0]));
 		case '|':
 			return union(
-				this.SAT(expression.left),
-				this.SAT(expression.right));
+				this.SAT(expression.subtrees[0]),
+				this.SAT(expression.subtrees[1]));
 		case '&':
 			return intersection(
-				this.SAT(expression.left),
-				this.SAT(expression.right));
+				this.SAT(expression.subtrees[0]),
+				this.SAT(expression.subtrees[1]));
 		case '->':
 			return union(
-				intersection(this.SAT(expression.left),
-					this.SAT(expression.right)),
+				intersection(this.SAT(expression.subtrees[0]),
+					this.SAT(expression.subtrees[1])),
 				without(this.states,
-					this.SAT(expression.left)));
+					this.SAT(expression.subtrees[0])));
 		case 'EX':
-			return this.SAT_EX(expression.left);
+			return this.SAT_EX(expression.subtrees[0]);
 		case 'EU':
-			return this.SAT_EU(expression.left, expression.right);
+			return this.SAT_EU(expression.subtrees[0], expression.subtrees[1]);
 		case 'EG':
-			return this.SAT_EG(expression.left);
+			return this.SAT_EG(expression.subtrees[0]);
 		default:
 			throw {
 				name: 'SystemError',
