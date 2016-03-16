@@ -30,6 +30,10 @@ const TRUE = {
 	subtrees: undefined
 };
 
+const END = {
+	id: {}
+};
+
 const _AND = operator('&');
 const _OR = operator('|');
 const _EU = operator('EU');
@@ -216,8 +220,7 @@ const symbolTable = new Map(map([
 	{ id: 'G', arity: 1 },
 	{ id: 'X', arity: 1 },
 	{ id: '(', arity: 1, leftBindingPower: 0, matches: ')' },
-	{ id: ')' },
-	{ id: '(end)' }
+	{ id: ')' }
 ], (symbol) => {
 	return [symbol.id, Symbol(symbol)];
 }));
@@ -243,7 +246,7 @@ const parse = (tokens) => {
 			};
 		}
 		else {
-			token = symbolTable.get('(end)');
+			token = END;
 		}
 	};
 
@@ -266,7 +269,7 @@ const parse = (tokens) => {
 	};
 
 	const expression = (rightBindingPower) => {
-		if (token.value === '(end)') {
+		if (token === END) {
 			throw SyntaxError('Unexpected end of input.');
 		}
 
@@ -277,7 +280,7 @@ const parse = (tokens) => {
 
 	advance();
 	const ast = expression(0);
-	advance('(end)');
+	advance(END.id);
 	return(ast);
 };
 
