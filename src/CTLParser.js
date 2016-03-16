@@ -37,12 +37,13 @@ const _NOT = operator('!');
 const _EX = operator('EX');
 const _EG = operator('EG');
 
-const Symbol = ({ id = undefined, value = id, leftBindingPower = 0, arity = 0 }) => {
+const Symbol = ({ id = undefined, value = id, leftBindingPower = 0, arity = 0, matches = undefined }) => {
 	return {
 		id,
 		leftBindingPower,
 		arity,
-		value
+		value,
+		matches
 	};
 };
 
@@ -183,16 +184,16 @@ const translate = (tree) => {
 };
 
 const nud = (token, expression, advance) => {
-	if (token.id === '(') {
-		const e = expression(0);
-		advance(')');
+	if (token.matches) {
+		const e = expression(token.leftBindingPower);
+		advance(token.matches);
 		return e;
 	}
 	else if (token.arity <= 1) {
 		return {
 			id: token.id,
 			value: token.value,
-			subtrees: token.arity === 0 ? undefined : [expression(40)]
+			subtrees: token.arity === 0 ? undefined : [expression(Infinity)]
 		};
 	}
 	else {
@@ -200,19 +201,8 @@ const nud = (token, expression, advance) => {
 	}
 };
 
-const led = (token, leftSubtree, expression) => {
-	return {
-		id: token.id,
-		value: token.value,
-		subtrees: [
-			leftSubtree,
-			expression(token.leftBindingPower - 1)
-		]
-	};
-};
-
 const symbolTable = new Map(map([
-	{ id: '(atom)' },
+	{ id: 'atom' },
 	{ id: '&', arity: 2, leftBindingPower: 30 },
 	{ id: '|', arity: 2, leftBindingPower: 30 },
 	{ id: '->', arity: 2, leftBindingPower: 20 },
@@ -225,7 +215,7 @@ const symbolTable = new Map(map([
 	{ id: 'F', arity: 1 },
 	{ id: 'G', arity: 1 },
 	{ id: 'X', arity: 1 },
-	{ id: '(', arity: 1 },
+	{ id: '(', arity: 1, leftBindingPower: 0, matches: ')' },
 	{ id: ')' },
 	{ id: '(end)' }
 ], (symbol) => {
@@ -242,17 +232,36 @@ const parse = (tokens) => {
 
 		if (tokens.length) {
 			const { type, value } = tokens.shift();
-			const t = symbolTable.get(type === 'atom' ? '(atom)' : value);
+			const t = symbolTable.get(type === 'operator' ? value : type);
 			token = {
 				id: t.id,
 				value,
-				subtrees: type === 'atom' ? undefined : [],
+				subtrees: [],
 				leftBindingPower: t.leftBindingPower,
-				arity: t.arity
+				arity: t.arity,
+				matches: t.matches
 			};
 		}
 		else {
 			token = symbolTable.get('(end)');
+		}
+	};
+
+	const parseInfix = (rightBindingPower, parseTree) => {
+		if (rightBindingPower < token.leftBindingPower) {
+			const t = token;
+			advance();
+			return parseInfix(rightBindingPower, {
+				id: t.id,
+				value: t.value,
+				subtrees: [
+					parseTree,
+					expression(t.leftBindingPower - 1)
+				]
+			});
+		}
+		else {
+			return parseTree;
 		}
 	};
 
@@ -263,14 +272,7 @@ const parse = (tokens) => {
 
 		const t = token;
 		advance();
-		let parseTree = nud(t, expression, advance);
-		while (rightBindingPower < token.leftBindingPower) {
-			const t = token;
-			advance();
-			parseTree = led(t, parseTree, expression);
-		}
-
-		return parseTree;
+		return parseInfix(rightBindingPower, nud(t, expression, advance));
 	};
 
 	advance();
