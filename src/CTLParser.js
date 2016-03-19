@@ -1,37 +1,20 @@
 import { assign, includes, map } from 'lodash';
 import tokenize from './CTLTokenizer';
+import parse from './PrattParser';
 
-const SyntaxError = (message) => {
-	return {
-		name: 'SyntaxError',
-		message
-	};
-};
-
-const throwExpected = (expectedId, token) => {
-	const end = 'end of input';
-	const expectedString = (expectedId === '(end)') ? end : `'${token.id}'`;
-	const foundString = (token.value === '(end)') ? end : `'${token.value}'`;
-
-	throw SyntaxError(`Expected ${expectedString} but found ${foundString}`);
-};
 
 const operator = (value) => {
 	return (...subtrees) => {
 		return {
 			value,
 			subtrees
-		}
+		};
 	};
 };
 
 const TRUE = {
 	value: '\\T',
 	subtrees: undefined
-};
-
-const END = {
-	id: {}
 };
 
 const _AND = operator('&');
@@ -225,67 +208,8 @@ const symbolTable = new Map(map([
 	return [symbol.id, Symbol(symbol)];
 }));
 
-const parse = (tokens) => {
-	let token = tokens[0];
-
-	const advance = (expectedId) => {
-		if (expectedId && token.id !== expectedId) {
-			throwExpected(expectedId, token);
-		}
-
-		if (tokens.length) {
-			const { type, value } = tokens.shift();
-			const t = symbolTable.get(type === 'operator' ? value : type);
-			token = {
-				id: t.id,
-				value,
-				subtrees: [],
-				leftBindingPower: t.leftBindingPower,
-				arity: t.arity,
-				matches: t.matches
-			};
-		}
-		else {
-			token = END;
-		}
-	};
-
-	const parseInfix = (rightBindingPower, parseTree) => {
-		if (rightBindingPower < token.leftBindingPower) {
-			const t = token;
-			advance();
-			return parseInfix(rightBindingPower, {
-				id: t.id,
-				value: t.value,
-				subtrees: [
-					parseTree,
-					expression(t.leftBindingPower - 1)
-				]
-			});
-		}
-		else {
-			return parseTree;
-		}
-	};
-
-	const expression = (rightBindingPower) => {
-		if (token === END) {
-			throw SyntaxError('Unexpected end of input.');
-		}
-
-		const t = token;
-		advance();
-		return parseInfix(rightBindingPower, nud(t, expression, advance));
-	};
-
-	advance();
-	const ast = expression(0);
-	advance(END.id);
-	return(ast);
-};
-
 export default (data) => {
 	const tokens = typeof data === 'string' ? tokenize(data) : data;
 
-	return translate(combineOps(parse(tokens)));
+	return translate(combineOps(parse(symbolTable, tokens)));
 };
