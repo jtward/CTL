@@ -236,7 +236,7 @@ describe('CTL Parser', () => {
 
 			const ast2 = CTL.parse(`${atomA} | ${atomB} & ${atomC}`);
 			aOr(a, aAnd(b, c))(ast2);
-		})
+		});
 
 		it('binds or tighter than U', () => {
 			const atomA = 'a';
@@ -358,17 +358,8 @@ describe('CTL Parser', () => {
 			assert.throws(() => {
 				CTL.parse('& a');
 			}, (e) => {
-				return (e.name === 'SyntaxError' && e.message === `Missing argument to operator '&'.`);
+				return (e.name === 'SyntaxError' && e.message === 'Missing argument to operator \'&\'.');
 			});
 		});
 	});
 });
-
-
-
-
-
-
-
-
-
