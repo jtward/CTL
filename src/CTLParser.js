@@ -17,12 +17,8 @@ const TRUE = {
 	subtrees: undefined
 };
 
-const _AND = operator('&');
-const _OR = operator('|');
-const _EU = operator('EU');
-const _NOT = operator('!');
-const _EX = operator('EX');
-const _EG = operator('EG');
+const [_AND, _OR, _EU, _NOT, _EX, _EG] =
+	map(['&', '|', 'EU', '!', 'EX', 'EG'], operator);
 
 const CTLOperators = ['A', 'E'];
 const LTLOperators = ['G', 'F', 'X', 'U', 'W', 'R'];
