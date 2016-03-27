@@ -8,6 +8,16 @@ const SyntaxError = (message) => {
 	};
 };
 
+const Symbol = ({ id = undefined, value = id, leftBindingPower = 0, arity = 0, matches = undefined }) => {
+	return {
+		id,
+		leftBindingPower,
+		arity,
+		value,
+		matches
+	};
+};
+
 const END = {
 	id: {}
 };
@@ -39,6 +49,7 @@ const nud = (token, expression, advance) => {
 };
 
 export default (symbolTable, tokens) => {
+	symbolTable = new Map(map(symbolTable, (symbol) => [symbol.id, Symbol(symbol)]));
 	let token = tokens[0];
 
 	const advance = (expectedId) => {

@@ -24,16 +24,6 @@ const _NOT = operator('!');
 const _EX = operator('EX');
 const _EG = operator('EG');
 
-const Symbol = ({ id = undefined, value = id, leftBindingPower = 0, arity = 0, matches = undefined }) => {
-	return {
-		id,
-		leftBindingPower,
-		arity,
-		value,
-		matches
-	};
-};
-
 const CTLOperators = ['A', 'E'];
 const LTLOperators = ['G', 'F', 'X', 'U', 'W', 'R'];
 const isCTLOperator = (value) => {
@@ -170,25 +160,7 @@ const translate = (tree) => {
 	}
 };
 
-const nud = (token, expression, advance) => {
-	if (token.matches) {
-		const e = expression(token.leftBindingPower);
-		advance(token.matches);
-		return e;
-	}
-	else if (token.arity <= 1) {
-		return {
-			id: token.id,
-			value: token.value,
-			subtrees: token.arity === 0 ? undefined : [expression(Infinity)]
-		};
-	}
-	else {
-		throw SyntaxError(`Missing argument to operator '${(token.value ? token.value : '')}'.`);
-	}
-};
-
-const symbolTable = new Map(map([
+const symbolTable = [
 	{ id: 'atom' },
 	{ id: '&', arity: 2, leftBindingPower: 30 },
 	{ id: '|', arity: 2, leftBindingPower: 30 },
@@ -204,12 +176,9 @@ const symbolTable = new Map(map([
 	{ id: 'X', arity: 1 },
 	{ id: '(', arity: 1, leftBindingPower: 0, matches: ')' },
 	{ id: ')' }
-], (symbol) => {
-	return [symbol.id, Symbol(symbol)];
-}));
+];
 
 export default (data) => {
 	const tokens = typeof data === 'string' ? tokenize(data) : data;
-
 	return translate(combineOps(parse(symbolTable, tokens)));
 };
