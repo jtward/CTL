@@ -22,24 +22,6 @@ const END = {
 	id: {}
 };
 
-const nud = (token, expression, next) => {
-	if (token.matches) {
-		const e = expression(token.leftBindingPower);
-		expect(next(), token.matches);
-		return e;
-	}
-	else if (token.arity <= 1) {
-		return {
-			id: token.id,
-			value: token.value,
-			subtrees: token.arity === 0 ? undefined : [expression(Infinity)]
-		};
-	}
-	else {
-		throw SyntaxError(`Missing argument to operator '${(token.value ? token.value : '')}'.`);
-	}
-};
-
 const expect = (token, expectedId) => {
 	if (expectedId && token.id !== expectedId) {
 		const end = 'end of input';
@@ -55,6 +37,10 @@ const parser = (symbols) => {
 		let peekToken, done;
 
 		const next = (expectedId) => {
+			if (done) {
+				throw SyntaxError('Unexpected end of input.');
+			}
+
 			done = !tokens.length;
 			const token = peekToken;
 			if (done) {
@@ -75,6 +61,26 @@ const parser = (symbols) => {
 			return token;
 		};
 
+		const parsePrefixOrAtom = () => {
+			const token = next();
+			if (token.matches) {
+				const e = parseExpression(token.leftBindingPower);
+				expect(peekToken, token.matches);
+				next(); // skip over matching token
+				return e;
+			}
+			else if (token.arity <= 1) {
+				return {
+					id: token.id,
+					value: token.value,
+					subtrees: token.arity === 0 ? undefined : [parseExpression(Infinity)]
+				};
+			}
+			else {
+				throw SyntaxError(`Missing argument to operator '${(token.value ? token.value : '')}'.`);
+			}
+		};
+
 		const parseInfix = (rightBindingPower, parseTree) => {
 			if (rightBindingPower < peekToken.leftBindingPower) {
 				const token = next();
@@ -83,7 +89,7 @@ const parser = (symbols) => {
 					value: token.value,
 					subtrees: [
 						parseTree,
-						expression(token.leftBindingPower - 1)
+						parseExpression(token.leftBindingPower - 1)
 					]
 				});
 			}
@@ -92,16 +98,12 @@ const parser = (symbols) => {
 			}
 		};
 
-		const expression = (rightBindingPower) => {
-			if (done) {
-				throw SyntaxError('Unexpected end of input.');
-			}
-
-			return parseInfix(rightBindingPower, nud(next(), expression, next));
+		const parseExpression = (rightBindingPower) => {
+			return parseInfix(rightBindingPower, parsePrefixOrAtom());
 		};
 
 		next();
-		return(expression(0));
+		return(parseExpression(0));
 	};
 };
 
