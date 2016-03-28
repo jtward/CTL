@@ -361,5 +361,12 @@ describe('CTL Parser', () => {
 				return (e.name === 'SyntaxError' && e.message === 'Missing argument to operator \'&\'.');
 			});
 		});
+		it('throws an error for mismatched brackets', () => {
+			assert.throws(() => {
+				CTL.parse('( a ');
+			}, (e) => {
+				return (e.name === 'SyntaxError' && e.message === 'Expected \')\' but found end of input.');
+			});
+		});
 	});
 });
