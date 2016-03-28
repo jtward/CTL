@@ -36,7 +36,7 @@ const parser = (symbols) => {
 	return (tokens) => {
 		let peekToken, done;
 
-		const next = (expectedId) => {
+		const next = () => {
 			if (done) {
 				throw SyntaxError('Unexpected end of input.');
 			}
