@@ -8,7 +8,9 @@
   },
   "scripts": {
     "test": "mocha --compilers js:babel-register",
-    "compile": "browserify src/CTL.js -o lib/CTL.js -t [ babelify --presets [ es2015 ] ]",
+    "compile-min": "browserify src/CTL.js -t [ babelify --presets [ es2015-rollup ] ] -t [ uglifyify ] | uglifyjs2 -c -o lib/CTL.min.js",
+    "compile": "browserify src/CTL.js -t [ babelify --presets [ es2015-rollup ] ] | uglifyjs2 -b -o lib/CTL.js",
+    "compile-es6": "rollup src/CTL.js -o lib/CTL.es6.js",
     "lint": "eslint src test; exit 0"
   },
   "repository": {
@@ -27,11 +29,16 @@
     "babel-plugin-lodash": "^2.0.1",
     "babel-polyfill": "^6.3.14",
     "babel-preset-es2015": "^6.3.13",
+    "babel-preset-es2015-rollup": "^1.1.1",
     "babel-register": "^6.4.3",
     "babelify": "^7.2.0",
     "browserify": "^13.0.0",
     "eslint": "^2.2.0",
     "lodash": "^4.2.1",
-    "mocha": "^2.4.5"
+    "mocha": "^2.4.5",
+    "rollup": "^0.25.7",
+    "rollup-plugin-babel": "^2.4.0",
+    "uglify-js2": "^2.1.11",
+    "uglifyify": "^3.0.1"
   }
 }
