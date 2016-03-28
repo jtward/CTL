@@ -1,4 +1,4 @@
-import { assign, includes, map } from 'lodash';
+import { map } from 'lodash';
 import tokenize from './CTLTokenizer';
 
 const SyntaxError = (message) => {
@@ -22,18 +22,10 @@ const END = {
 	id: {}
 };
 
-const throwExpected = (expectedId, token) => {
-	const end = 'end of input';
-	const expectedString = (expectedId === END.id) ? end : `'${token.id}'`;
-	const foundString = (token === END) ? end : `'${token.value}'`;
-
-	throw SyntaxError(`Expected ${expectedString} but found ${foundString}`);
-};
-
-const nud = (token, expression, advance) => {
+const nud = (token, expression, next) => {
 	if (token.matches) {
 		const e = expression(token.leftBindingPower);
-		advance(token.matches);
+		expect(next(), token.matches);
 		return e;
 	}
 	else if (token.arity <= 1) {
@@ -48,62 +40,72 @@ const nud = (token, expression, advance) => {
 	}
 };
 
-export default (symbolTable, tokens) => {
-	symbolTable = new Map(map(symbolTable, (symbol) => [symbol.id, Symbol(symbol)]));
-	let token = tokens[0];
+const expect = (token, expectedId) => {
+	if (expectedId && token.id !== expectedId) {
+		const end = 'end of input';
+		const expectedString = (expectedId === END.id) ? end : `'${expectedId}'`;
+		const foundString = (token === END) ? end : `'${token.value}'`;
 
-	const advance = (expectedId) => {
-		if (expectedId && token.id !== expectedId) {
-			throwExpected(expectedId, token);
-		}
+		throw SyntaxError(`Expected ${expectedString} but found ${foundString}.`);
+	}
+};
 
-		if (tokens.length) {
-			const { type, value } = tokens.shift();
-			const t = symbolTable.get(type === 'operator' ? value : type);
-			token = {
-				id: t.id,
-				value,
-				subtrees: [],
-				leftBindingPower: t.leftBindingPower,
-				arity: t.arity,
-				matches: t.matches
-			};
-		}
-		else {
-			token = END;
-		}
+const parser = (symbols) => {
+	return (tokens) => {
+		let peekToken, done;
+
+		const next = (expectedId) => {
+			done = !tokens.length;
+			const t = peekToken;
+			if (done) {
+				peekToken = END;
+			}
+			else {
+				const { type, value } = tokens.shift();
+				const t = symbols.get(type === 'operator' ? value : type);
+				peekToken = {
+					id: t.id,
+					value,
+					subtrees: [],
+					leftBindingPower: t.leftBindingPower,
+					arity: t.arity,
+					matches: t.matches
+				};
+			}
+			return t;
+		};
+
+		const parseInfix = (rightBindingPower, parseTree) => {
+			if (rightBindingPower < peekToken.leftBindingPower) {
+				const t = next();
+				return parseInfix(rightBindingPower, {
+					id: t.id,
+					value: t.value,
+					subtrees: [
+						parseTree,
+						expression(t.leftBindingPower - 1)
+					]
+				});
+			}
+			else {
+				return parseTree;
+			}
+		};
+
+		const expression = (rightBindingPower) => {
+			if (done) {
+				throw SyntaxError('Unexpected end of input.');
+			}
+
+			return parseInfix(rightBindingPower, nud(next(), expression, next));
+		};
+
+		next();
+		return(expression(0));
 	};
+};
 
-	const parseInfix = (rightBindingPower, parseTree) => {
-		if (rightBindingPower < token.leftBindingPower) {
-			const t = token;
-			advance();
-			return parseInfix(rightBindingPower, {
-				id: t.id,
-				value: t.value,
-				subtrees: [
-					parseTree,
-					expression(t.leftBindingPower - 1)
-				]
-			});
-		}
-		else {
-			return parseTree;
-		}
-	};
-
-	const expression = (rightBindingPower) => {
-		if (token === END) {
-			throw SyntaxError('Unexpected end of input.');
-		}
-
-		const t = token;
-		advance();
-		return parseInfix(rightBindingPower, nud(t, expression, advance));
-	};
-
-	advance();
-	const ast = expression(0);
-	advance(END.id);
-	return(ast);
+export default (symbols) => {
+	symbols = new Map(map(symbols, (symbol) => [symbol.id, Symbol(symbol)]));
+	return parser(symbols);
 };

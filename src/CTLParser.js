@@ -1,6 +1,6 @@
-import { assign, includes, map } from 'lodash';
+import { map } from 'lodash';
 import tokenize from './CTLTokenizer';
-import parse from './PrattParser';
+import parser from './PrattParser';
 
 
 const operator = (value) => {
@@ -23,10 +23,10 @@ const [_AND, _OR, _EU, _NOT, _EX, _EG] =
 const CTLOperators = ['A', 'E'];
 const LTLOperators = ['G', 'F', 'X', 'U', 'W', 'R'];
 const isCTLOperator = (value) => {
-	return includes(CTLOperators, value);
+	return CTLOperators.indexOf(value) !== -1;
 };
 const isLTLOperator = (value) => {
-	return includes(LTLOperators, value);
+	return LTLOperators.indexOf(value) !== -1;
 };
 
 // combine CTL-LTL operator pairs into single tokens
@@ -156,7 +156,7 @@ const translate = (tree) => {
 	}
 };
 
-const symbolTable = [
+const symbols = [
 	{ id: 'atom' },
 	{ id: '&', arity: 2, leftBindingPower: 30 },
 	{ id: '|', arity: 2, leftBindingPower: 30 },
@@ -174,7 +174,9 @@ const symbolTable = [
 	{ id: ')' }
 ];
 
+const parse = parser(symbols);
+
 export default (data) => {
 	const tokens = typeof data === 'string' ? tokenize(data) : data;
-	return translate(combineOps(parse(symbolTable, tokens)));
+	return translate(combineOps(parse(tokens)));
 };
