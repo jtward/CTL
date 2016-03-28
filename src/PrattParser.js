@@ -23,7 +23,7 @@ const END = {
 };
 
 const expect = (token, expectedId) => {
-	if (expectedId && token.id !== expectedId) {
+	if (token.id !== expectedId) {
 		const end = 'end of input';
 		const expectedString = (expectedId === END.id) ? end : `'${expectedId}'`;
 		const foundString = (token === END) ? end : `'${token.value}'`;
