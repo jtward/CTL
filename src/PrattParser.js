@@ -56,34 +56,34 @@ const parser = (symbols) => {
 
 		const next = (expectedId) => {
 			done = !tokens.length;
-			const t = peekToken;
+			const token = peekToken;
 			if (done) {
 				peekToken = END;
 			}
 			else {
 				const { type, value } = tokens.shift();
-				const t = symbols.get(type === 'operator' ? value : type);
+				const symbol = symbols.get(type === 'operator' ? value : type);
 				peekToken = {
-					id: t.id,
+					id: symbol.id,
 					value,
 					subtrees: [],
-					leftBindingPower: t.leftBindingPower,
-					arity: t.arity,
-					matches: t.matches
+					leftBindingPower: symbol.leftBindingPower,
+					arity: symbol.arity,
+					matches: symbol.matches
 				};
 			}
-			return t;
+			return token;
 		};
 
 		const parseInfix = (rightBindingPower, parseTree) => {
 			if (rightBindingPower < peekToken.leftBindingPower) {
-				const t = next();
+				const token = next();
 				return parseInfix(rightBindingPower, {
-					id: t.id,
-					value: t.value,
+					id: token.id,
+					value: token.value,
 					subtrees: [
 						parseTree,
-						expression(t.leftBindingPower - 1)
+						expression(token.leftBindingPower - 1)
 					]
 				});
 			}
