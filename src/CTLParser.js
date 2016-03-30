@@ -156,23 +156,23 @@ const translate = (tree) => {
 	}
 };
 
-const symbols = [
-	{ id: 'atom' },
-	{ id: '&', arity: 2, leftBindingPower: 30 },
-	{ id: '|', arity: 2, leftBindingPower: 30 },
-	{ id: '->', arity: 2, leftBindingPower: 20 },
-	{ id: 'U', arity: 2, leftBindingPower: 10 },
-	{ id: 'R', arity: 2, leftBindingPower: 10 },
-	{ id: 'W', arity: 2, leftBindingPower: 10 },
-	{ id: 'E', arity: 1 },
-	{ id: 'A', arity: 1 },
-	{ id: '!', arity: 1 },
-	{ id: 'F', arity: 1 },
-	{ id: 'G', arity: 1 },
-	{ id: 'X', arity: 1 },
-	{ id: '(', arity: 1, leftBindingPower: 0, matches: ')' },
-	{ id: ')' }
-];
+const symbols = {
+	'atom': {},
+	'&': { arity: 2, leftBindingPower: 30 },
+	'|': { arity: 2, leftBindingPower: 30 },
+	'->': { arity: 2, leftBindingPower: 20 },
+	'U': { arity: 2, leftBindingPower: 10 },
+	'R': { arity: 2, leftBindingPower: 10 },
+	'W': { arity: 2, leftBindingPower: 10 },
+	'E': { arity: 1 },
+	'A': { arity: 1 },
+	'!': { arity: 1 },
+	'F': { arity: 1 },
+	'G': { arity: 1 },
+	'X': { arity: 1 },
+	'(': { arity: 1, leftBindingPower: 0, matches: ')' },
+	')': {}
+};
 
 const parse = parser(symbols);
 

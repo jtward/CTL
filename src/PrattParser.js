@@ -1,5 +1,4 @@
-import { map } from 'lodash';
-import tokenize from './CTLTokenizer';
+import { map, mapValues } from 'lodash';
 
 const SyntaxError = (message) => {
 	return {
@@ -8,12 +7,11 @@ const SyntaxError = (message) => {
 	};
 };
 
-const Symbol = ({ id = undefined, value = id, leftBindingPower = 0, arity = 0, matches = undefined }) => {
+const Symbol = (id = undefined, { leftBindingPower = 0, arity = 0, matches = undefined }) => {
 	return {
 		id,
 		leftBindingPower,
 		arity,
-		value,
 		matches
 	};
 };
@@ -48,7 +46,8 @@ const parser = (symbols) => {
 			}
 			else {
 				const { type, value } = tokens.shift();
-				const symbol = symbols.get(type === 'operator' ? value : type);
+				const symbol = symbols[type === 'operator' ? value : type];
+
 				peekToken = {
 					id: symbol.id,
 					value,
@@ -77,7 +76,7 @@ const parser = (symbols) => {
 				};
 			}
 			else {
-				throw SyntaxError(`Missing argument to operator '${(token.value ? token.value : '')}'.`);
+				throw SyntaxError(`Missing argument to operator '${token.id}'.`);
 			}
 		};
 
@@ -108,6 +107,9 @@ const parser = (symbols) => {
 };
 
 export default (symbols) => {
-	symbols = new Map(map(symbols, (symbol) => [symbol.id, Symbol(symbol)]));
+	symbols = mapValues(symbols, (symbol, id) => {
+		return Symbol(id, symbol);
+	});
+
 	return parser(symbols);
 };
