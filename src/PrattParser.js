@@ -1,4 +1,4 @@
-import { map, mapValues, times } from 'lodash';
+import { mapValues, times } from 'lodash';
 
 const SyntaxError = (message) => {
 	return {
