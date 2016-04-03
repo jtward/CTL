@@ -1,4 +1,4 @@
-import { map, mapValues } from 'lodash';
+import { map, mapValues, times } from 'lodash';
 
 const SyntaxError = (message) => {
 	return {
@@ -7,12 +7,14 @@ const SyntaxError = (message) => {
 	};
 };
 
-const Symbol = (id = undefined, { leftBindingPower = 0, arity = 0, matches = undefined }) => {
+const Symbol = (id = undefined, { leftBindingPower = 0, arity = 0, matches = undefined, prefix = false, postfix = false }) => {
 	return {
 		id,
 		leftBindingPower,
 		arity,
-		matches
+		matches,
+		prefix,
+		postfix
 	};
 };
 
@@ -54,7 +56,9 @@ const parser = (symbols) => {
 					subtrees: [],
 					leftBindingPower: symbol.leftBindingPower,
 					arity: symbol.arity,
-					matches: symbol.matches
+					matches: symbol.matches,
+					prefix: symbol.prefix,
+					postfix: symbol.postfix
 				};
 			}
 			return token;
@@ -89,23 +93,51 @@ const parser = (symbols) => {
 						};
 					}
 				default:
-					// we don't expect binary operators here -
-					// those are handled by parseInfix
-					throw SyntaxError(`Missing argument to operator '${token.id}'.`);
+					if (token.prefix) {
+						return {
+							id: token.id,
+							value: token.value,
+							subtrees: times(token.arity, () => parseExpression(Infinity))
+						};
+					}
+					else {
+						// we don't expect binary operators here -
+						// those are handled by parseInfix
+						throw SyntaxError(`Missing argument to operator '${token.id}'.`);
+					}
 			}
 		};
 
 		const parseInfix = (rightBindingPower, parseTree) => {
 			if (rightBindingPower < peekToken.leftBindingPower) {
 				const token = next();
-				return parseInfix(rightBindingPower, {
-					id: token.id,
-					value: token.value,
-					subtrees: [
-						parseTree,
-						parseExpression(token.leftBindingPower - 1)
-					]
-				});
+
+				switch (token.arity) {
+					case 2:
+						return parseInfix(rightBindingPower, {
+							id: token.id,
+							value: token.value,
+							subtrees: [
+								parseTree,
+								parseExpression(token.leftBindingPower - 1)
+							]
+						});
+					case 1:
+						if (token.postfix) {
+							return parseInfix(rightBindingPower, {
+								id: token.id,
+								value: token.value,
+								subtrees: [
+									parseTree
+								]
+							});
+						}
+						else {
+							throw SyntaxError();
+						}
+					default:
+						throw SyntaxError();
+				}
 			}
 			else {
 				return parseTree;
@@ -113,11 +145,15 @@ const parser = (symbols) => {
 		};
 
 		const parseExpression = (rightBindingPower) => {
-			return parseInfix(rightBindingPower, parsePrefixOrAtom());
+			const expression = parseInfix(rightBindingPower, parsePrefixOrAtom());
+			return expression;
 		};
 
 		next();
 		const ast = parseExpression(0);
+		if (peekToken.id !== END.id) {
+			console.log(peekToken);
+		}
 		expect(peekToken, END.id);
 		return ast;
 	};
