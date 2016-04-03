@@ -7,7 +7,7 @@ const syntaxError = (message) => {
 	};
 };
 
-const toSymbol = (id, { leftBindingPower = 0, arity = 0, matches, prefix = false, postfix = false }) => {
+const toSymbol = ({ leftBindingPower = 0, arity = 0, matches, prefix = false, postfix = false }, id) => {
 	return {
 		id,
 		leftBindingPower,
@@ -157,9 +157,7 @@ const parser = (symbols) => {
 };
 
 export default (symbols) => {
-	symbols = mapValues(symbols, (symbol, id) => {
-		return toSymbol(id, symbol);
-	});
+	symbols = mapValues(symbols, toSymbol);
 
 	return parser(symbols);
 };
