@@ -89,6 +89,14 @@ describe('tokenizer', function() {
 			});
 		});
 
+		it('should tokenize | as the or operator', function () {
+			const tokens = Array.from(tokenize('|'));
+			assert.deepEqual(tokens[0], {
+				type: 'operator',
+				value: '|'
+			});
+		});
+
 		it('should tokenize -> as the implication operator', function () {
 			const tokens = Array.from(tokenize('->'));
 			assert.deepEqual(tokens[0], {
