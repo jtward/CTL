@@ -358,7 +358,7 @@ describe('CTL Parser', () => {
 			assert.throws(() => {
 				CTL.parse('& a');
 			}, (e) => {
-				return (e.name === 'SyntaxError' && e.message === 'Missing argument to operator \'&\'.');
+				return (e.name === 'SyntaxError' && e.message === 'Expected a value or prefix operator but found \'&\'.');
 			});
 		});
 		it('throws an error for mismatched brackets', () => {

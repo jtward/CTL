@@ -103,7 +103,7 @@ const parser = (symbols) => {
 					else {
 						// we don't expect binary operators here -
 						// those are handled by parseInfix
-						throw syntaxError(`Missing argument to operator '${token.id}'.`);
+						throw syntaxError(`Expected a value or prefix operator but found '${token.id}'.`);
 					}
 			}
 		};
@@ -133,10 +133,10 @@ const parser = (symbols) => {
 							});
 						}
 						else {
-							throw syntaxError();
+							throw syntaxError(`Expected an infix or postfix operator but found ${token.id}`);
 						}
 					default:
-						throw syntaxError();
+						throw syntaxError(`Expected an infix or postfix operator but found ${token.id}`);
 				}
 			}
 			else {
