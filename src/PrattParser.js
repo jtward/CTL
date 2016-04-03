@@ -62,21 +62,36 @@ const parser = (symbols) => {
 
 		const parsePrefixOrAtom = () => {
 			const token = next();
-			if (token.matches) {
-				const e = parseExpression(token.leftBindingPower);
-				expect(peekToken, token.matches);
-				next(); // skip over matching token
-				return e;
-			}
-			else if (token.arity <= 1) {
-				return {
-					id: token.id,
-					value: token.value,
-					subtrees: token.arity === 0 ? undefined : [parseExpression(Infinity)]
-				};
-			}
-			else {
-				throw SyntaxError(`Missing argument to operator '${token.id}'.`);
+
+			switch (token.arity) {
+				case 0:
+					// atoms are leaf nodes
+					return {
+						id: token.id,
+						value: token.value,
+						subtrees: undefined
+					};
+				case 1:
+					if (token.matches) {
+						// tokens with `matches` properties are grouping
+						// operators, such as brackets
+						const e = parseExpression(token.leftBindingPower);
+						expect(peekToken, token.matches);
+						next(); // skip over matching token
+						return e;
+					}
+					else {
+						// a prefix operator
+						return {
+							id: token.id,
+							value: token.value,
+							subtrees: [parseExpression(Infinity)]
+						};
+					}
+				default:
+					// we don't expect binary operators here -
+					// those are handled by parseInfix
+					throw SyntaxError(`Missing argument to operator '${token.id}'.`);
 			}
 		};
 
