@@ -1,13 +1,13 @@
 import { mapValues, times } from 'lodash';
 
-const SyntaxError = (message) => {
+const syntaxError = (message) => {
 	return {
 		name: 'SyntaxError',
 		message
 	};
 };
 
-const Symbol = (id = undefined, { leftBindingPower = 0, arity = 0, matches = undefined, prefix = false, postfix = false }) => {
+const toSymbol = (id = undefined, { leftBindingPower = 0, arity = 0, matches = undefined, prefix = false, postfix = false }) => {
 	return {
 		id,
 		leftBindingPower,
@@ -28,7 +28,7 @@ const expect = (token, expectedId) => {
 		const expectedString = (expectedId === END.id) ? end : `'${expectedId}'`;
 		const foundString = (token === END) ? end : `'${token.value}'`;
 
-		throw SyntaxError(`Expected ${expectedString} but found ${foundString}.`);
+		throw syntaxError(`Expected ${expectedString} but found ${foundString}.`);
 	}
 };
 
@@ -38,7 +38,7 @@ const parser = (symbols) => {
 
 		const next = () => {
 			if (done) {
-				throw SyntaxError('Unexpected end of input.');
+				throw syntaxError('Unexpected end of input.');
 			}
 
 			done = !tokens.length;
@@ -103,7 +103,7 @@ const parser = (symbols) => {
 					else {
 						// we don't expect binary operators here -
 						// those are handled by parseInfix
-						throw SyntaxError(`Missing argument to operator '${token.id}'.`);
+						throw syntaxError(`Missing argument to operator '${token.id}'.`);
 					}
 			}
 		};
@@ -133,10 +133,10 @@ const parser = (symbols) => {
 							});
 						}
 						else {
-							throw SyntaxError();
+							throw syntaxError();
 						}
 					default:
-						throw SyntaxError();
+						throw syntaxError();
 				}
 			}
 			else {
@@ -161,7 +161,7 @@ const parser = (symbols) => {
 
 export default (symbols) => {
 	symbols = mapValues(symbols, (symbol, id) => {
-		return Symbol(id, symbol);
+		return toSymbol(id, symbol);
 	});
 
 	return parser(symbols);
