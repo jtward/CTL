@@ -117,7 +117,9 @@ const parser = (symbols) => {
 		};
 
 		next();
-		return(parseExpression(0));
+		const ast = parseExpression(0);
+		expect(peekToken, END.id);
+		return ast;
 	};
 };
 
