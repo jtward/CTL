@@ -7,7 +7,7 @@ const syntaxError = (message) => {
 	};
 };
 
-const toSymbol = (id = undefined, { leftBindingPower = 0, arity = 0, matches = undefined, prefix = false, postfix = false }) => {
+const toSymbol = (id, { leftBindingPower = 0, arity = 0, matches, prefix = false, postfix = false }) => {
 	return {
 		id,
 		leftBindingPower,
@@ -151,9 +151,6 @@ const parser = (symbols) => {
 
 		next();
 		const ast = parseExpression(0);
-		if (peekToken.id !== END.id) {
-			console.log(peekToken);
-		}
 		expect(peekToken, END.id);
 		return ast;
 	};
