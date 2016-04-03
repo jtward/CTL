@@ -145,8 +145,7 @@ const parser = (symbols) => {
 		};
 
 		const parseExpression = (rightBindingPower) => {
-			const expression = parseInfix(rightBindingPower, parsePrefixOrAtom());
-			return expression;
+			return parseInfix(rightBindingPower, parsePrefixOrAtom());
 		};
 
 		next();
@@ -157,7 +156,5 @@ const parser = (symbols) => {
 };
 
 export default (symbols) => {
-	symbols = mapValues(symbols, toSymbol);
-
-	return parser(symbols);
+	return parser(mapValues(symbols, toSymbol));
 };
