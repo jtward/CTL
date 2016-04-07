@@ -101,7 +101,7 @@ const parser = (symbols) => {
 					return parseTree(token, [parsePrefixOrAtom()]);
 				}
 				else if (token.prefix) {
-					return parseTree(token, times(token.arity, (parseExpression(Infinity))));
+					return parseTree(token, times(token.arity, () => parseExpression(Infinity)));
 				}
 				else {
 					// we don't expect binary operators here -
@@ -117,14 +117,17 @@ const parser = (symbols) => {
 			}
 
 			else if (rightBindingPower < peekToken.leftBindingPower ||
-				(rightBindingPower && peekToken.rightAssociative && rightBindingPower === peekToken.leftBindingPower)) {
+				(rightBindingPower &&
+					peekToken.rightAssociative &&
+					rightBindingPower === peekToken.leftBindingPower)) {
 
 				const token = next();
 
 				if (token.arity === 2) {
 					return parseInfix(rightBindingPower,
 						parseTree(token, [
-							leftParseTree, parseExpression(token.leftBindingPower)
+							leftParseTree,
+							parseExpression(token.leftBindingPower)
 						]));
 				}
 				else {
