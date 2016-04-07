@@ -72,50 +72,50 @@ const parser = (symbols) => {
 			const token = next();
 
 			switch (token.arity) {
-				case 0:
-					// atoms are leaf nodes
+			case 0:
+				// atoms are leaf nodes
+				return {
+					id: token.id,
+					value: token.value,
+					subtrees: undefined
+				};
+			case 1:
+				if (token.matches) {
+					// tokens with `matches` properties are grouping
+					// operators, such as brackets
+					const e = parseExpression(token.leftBindingPower);
+					expect(peekToken, token.matches);
+					next(); // skip over matching token
+					return e;
+				}
+				else {
+					// a prefix operator
 					return {
 						id: token.id,
 						value: token.value,
-						subtrees: undefined
+						subtrees: [parsePrefixOrAtom()]
 					};
-				case 1:
-					if (token.matches) {
-						// tokens with `matches` properties are grouping
-						// operators, such as brackets
-						const e = parseExpression(token.leftBindingPower);
-						expect(peekToken, token.matches);
-						next(); // skip over matching token
-						return e;
-					}
-					else {
-						// a prefix operator
-						return {
-							id: token.id,
-							value: token.value,
-							subtrees: [parsePrefixOrAtom()]
-						};
-					}
-				default:
-					if (token.unary) {
-						return {
-							id: token.id,
-							value: token.value,
-							subtrees: [parsePrefixOrAtom()]
-						};
-					}
-					else if (token.prefix) {
-						return {
-							id: token.id,
-							value: token.value,
-							subtrees: times(token.arity, () => parseExpression(Infinity))
-						};
-					}
-					else {
-						// we don't expect binary operators here -
-						// those are handled by parseInfix
-						throw syntaxError(`Expected a value or prefix operator but found '${token.id}'.`);
-					}
+				}
+			default:
+				if (token.unary) {
+					return {
+						id: token.id,
+						value: token.value,
+						subtrees: [parsePrefixOrAtom()]
+					};
+				}
+				else if (token.prefix) {
+					return {
+						id: token.id,
+						value: token.value,
+						subtrees: times(token.arity, () => parseExpression(Infinity))
+					};
+				}
+				else {
+					// we don't expect binary operators here -
+					// those are handled by parseInfix
+					throw syntaxError(`Expected a value or prefix operator but found '${token.id}'.`);
+				}
 			}
 		};
 
