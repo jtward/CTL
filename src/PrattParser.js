@@ -7,14 +7,15 @@ const syntaxError = (message) => {
 	};
 };
 
-const toSymbol = ({ leftBindingPower = 0, arity = 0, matches, prefix = false, postfix = false }, id) => {
+const toSymbol = ({ leftBindingPower = 0, arity = 0, matches, prefix = false, postfix = false, unary = false }, id) => {
 	return {
 		id,
 		leftBindingPower,
 		arity,
 		matches,
 		prefix,
-		postfix
+		postfix,
+		unary
 	};
 };
 
@@ -58,7 +59,8 @@ const parser = (symbols) => {
 					arity: symbol.arity,
 					matches: symbol.matches,
 					prefix: symbol.prefix,
-					postfix: symbol.postfix
+					postfix: symbol.postfix,
+					unary: symbol.unary
 				};
 			}
 			return token;
@@ -89,11 +91,18 @@ const parser = (symbols) => {
 						return {
 							id: token.id,
 							value: token.value,
-							subtrees: [parseExpression(Infinity)]
+							subtrees: [parsePrefixOrAtom()]
 						};
 					}
 				default:
-					if (token.prefix) {
+					if (token.unary) {
+						return {
+							id: token.id,
+							value: token.value,
+							subtrees: [parsePrefixOrAtom()]
+						};
+					}
+					else if (token.prefix) {
 						return {
 							id: token.id,
 							value: token.value,
@@ -109,34 +118,31 @@ const parser = (symbols) => {
 		};
 
 		const parseInfix = (rightBindingPower, parseTree) => {
-			if (rightBindingPower < peekToken.leftBindingPower) {
+			if (peekToken.postfix) {
+				const token = next();
+				return parseInfix(rightBindingPower, {
+					id: token.id,
+					value: token.value,
+					subtrees: [
+						parseTree
+					]
+				});
+			}
+			else if (rightBindingPower < peekToken.leftBindingPower) {
 				const token = next();
 
-				switch (token.arity) {
-					case 2:
-						return parseInfix(rightBindingPower, {
-							id: token.id,
-							value: token.value,
-							subtrees: [
-								parseTree,
-								parseExpression(token.leftBindingPower - 1)
-							]
-						});
-					case 1:
-						if (token.postfix) {
-							return parseInfix(rightBindingPower, {
-								id: token.id,
-								value: token.value,
-								subtrees: [
-									parseTree
-								]
-							});
-						}
-						else {
-							throw syntaxError(`Expected an infix or postfix operator but found ${token.id}`);
-						}
-					default:
-						throw syntaxError(`Expected an infix or postfix operator but found ${token.id}`);
+				if (token.arity === 2) {
+					return parseInfix(rightBindingPower, {
+						id: token.id,
+						value: token.value,
+						subtrees: [
+							parseTree,
+							parseExpression(token.leftBindingPower - 1)
+						]
+					});
+				}
+				else {
+					throw syntaxError(`Expected an infix or postfix operator but found ${token.id}`);
 				}
 			}
 			else {
