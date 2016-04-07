@@ -232,10 +232,10 @@ describe('CTL Parser', () => {
 			const c = aAtom(atomC);
 
 			const ast1 = CTL.parse(`${atomA} & ${atomB} | ${atomC}`);
-			aAnd(a, aOr(b, c))(ast1);
+			aOr(aAnd(a, b), c)(ast1);
 
 			const ast2 = CTL.parse(`${atomA} | ${atomB} & ${atomC}`);
-			aOr(a, aAnd(b, c))(ast2);
+			aAnd(aOr(a, b), c)(ast2);
 		});
 
 		it('binds or tighter than U', () => {

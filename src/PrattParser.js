@@ -7,7 +7,7 @@ const syntaxError = (message) => {
 	};
 };
 
-const toSymbol = ({ leftBindingPower = 0, arity = 0, matches, prefix = false, postfix = false, unary = false }, id) => {
+const toSymbol = ({ leftBindingPower = 0, arity = 0, matches, prefix = false, postfix = false, unary = false, rightAssociative = false }, id) => {
 	return {
 		id,
 		leftBindingPower,
@@ -15,7 +15,8 @@ const toSymbol = ({ leftBindingPower = 0, arity = 0, matches, prefix = false, po
 		matches,
 		prefix,
 		postfix,
-		unary
+		unary,
+		rightAssociative
 	};
 };
 
@@ -60,7 +61,8 @@ const parser = (symbols) => {
 					matches: symbol.matches,
 					prefix: symbol.prefix,
 					postfix: symbol.postfix,
-					unary: symbol.unary
+					unary: symbol.unary,
+					rightAssociative: symbol.rightAssociative
 				};
 			}
 			return token;
@@ -128,7 +130,10 @@ const parser = (symbols) => {
 					]
 				});
 			}
-			else if (rightBindingPower < peekToken.leftBindingPower) {
+
+			else if (rightBindingPower < peekToken.leftBindingPower ||
+				(rightBindingPower && peekToken.rightAssociative && rightBindingPower === peekToken.leftBindingPower)) {
+
 				const token = next();
 
 				if (token.arity === 2) {
@@ -137,7 +142,7 @@ const parser = (symbols) => {
 						value: token.value,
 						subtrees: [
 							parseTree,
-							parseExpression(token.leftBindingPower - 1)
+							parseExpression(token.leftBindingPower)
 						]
 					});
 				}
@@ -145,6 +150,7 @@ const parser = (symbols) => {
 					throw syntaxError(`Expected an infix or postfix operator but found ${token.id}`);
 				}
 			}
+
 			else {
 				return parseTree;
 			}
