@@ -34,10 +34,10 @@ const expect = (token, expectedId) => {
 	}
 };
 
-const parseTree = (token, subtrees) => {
+const parseTree = ({ id, value }, subtrees) => {
 	return {
-		id: token.id,
-		value: token.value,
+		id,
+		value,
 		subtrees
 	};
 };
@@ -76,21 +76,31 @@ const parser = (symbols) => {
 			return token;
 		};
 
+		const parsePostfix = (leftParseTree) => {
+			if (peekToken.arity === 1 && peekToken.postfix) {
+				const token = next();
+				return parsePostfix(parseTree(token, [leftParseTree]));
+			}
+			else {
+				return leftParseTree;
+			}
+		};
+
 		const parsePrefixOrAtom = () => {
 			const token = next();
 
 			switch (token.arity) {
 			case 0:
 				// atoms are leaf nodes
-				return parseTree(token, undefined);
+				return parsePostfix(parseTree(token, undefined));
 			case 1:
 				if (token.matches) {
 					// tokens with `matches` properties are grouping
 					// operators, such as brackets
-					const e = parseExpression(token.leftBindingPower);
+					const expression = parseExpression(token.leftBindingPower);
 					expect(peekToken, token.matches);
 					next(); // skip over matching token
-					return e;
+					return parsePostfix(expression);
 				}
 				else {
 					// a prefix operator
@@ -112,11 +122,7 @@ const parser = (symbols) => {
 		};
 
 		const parseInfix = (rightBindingPower, leftParseTree) => {
-			if (peekToken.postfix) {
-				return parseInfix(rightBindingPower, parseTree(next(), [leftParseTree]));
-			}
-
-			else if (rightBindingPower < peekToken.leftBindingPower ||
+			if (rightBindingPower < peekToken.leftBindingPower ||
 				(rightBindingPower &&
 					peekToken.rightAssociative &&
 					rightBindingPower === peekToken.leftBindingPower)) {
@@ -131,10 +137,9 @@ const parser = (symbols) => {
 						]));
 				}
 				else {
-					throw syntaxError(`Expected an infix or postfix operator but found ${token.id}`);
+					throw syntaxError(`Expected an infix operator but found ${token.id}`);
 				}
 			}
-
 			else {
 				return leftParseTree;
 			}
