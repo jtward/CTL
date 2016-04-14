@@ -1,4 +1,23 @@
-import { mapValues, times } from 'lodash';
+const times = (n, f) => {
+	let index = -1;
+	while (++index < n) {
+		f();
+	}
+};
+
+const mapValues = (obj, f) => {
+	const result = {};
+	const keys = Object.keys(obj);
+	const length = keys.length;
+
+	let index = -1;
+	while (++index < length) {
+		const key = keys[index];
+		result[key] = f(obj[key], key);
+	}
+
+	return result;
+};
 
 const syntaxError = (message) => {
 	return {
