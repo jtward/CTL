@@ -19,6 +19,9 @@ const mapValues = (obj, f) => {
 	return result;
 };
 
+const identity = (a) => a;
+const valid = () => true;
+
 const syntaxError = (message) => {
 	return {
 		name: 'SyntaxError',
@@ -26,7 +29,7 @@ const syntaxError = (message) => {
 	};
 };
 
-const toSymbol = ({ leftBindingPower = 0, arity = 0, matches, prefix = false, postfix = false, unary = false, rightAssociative = false }, id) => {
+const toSymbol = ({ leftBindingPower = 0, arity = 0, matches, prefix = false, postfix = false, unary = false, rightAssociative = false, transform = identity, verify = valid }, id) => {
 	return {
 		id,
 		leftBindingPower,
@@ -35,7 +38,9 @@ const toSymbol = ({ leftBindingPower = 0, arity = 0, matches, prefix = false, po
 		prefix,
 		postfix,
 		unary,
-		rightAssociative
+		rightAssociative,
+		transform,
+		verify
 	};
 };
 
@@ -53,12 +58,20 @@ const expect = (token, expectedId) => {
 	}
 };
 
-const parseTree = ({ id, value }, subtrees) => {
-	return {
+const parseTree = ({ id, value, transform, verify }, subtrees) => {
+	const node = {
 		id,
 		value,
 		subtrees
 	};
+
+	const validity = verify(node);
+	if (validity === true) {
+		return transform(node);
+	}
+	else {
+		throw syntaxError(validity);
+	}
 };
 
 const parser = (symbols) => {
@@ -89,7 +102,9 @@ const parser = (symbols) => {
 					prefix: symbol.prefix,
 					postfix: symbol.postfix,
 					unary: symbol.unary,
-					rightAssociative: symbol.rightAssociative
+					rightAssociative: symbol.rightAssociative,
+					transform: symbol.transform,
+					verify: symbol.verify
 				};
 			}
 			return token;
@@ -116,7 +131,7 @@ const parser = (symbols) => {
 				if (token.matches) {
 					// tokens with `matches` properties are grouping
 					// operators, such as brackets
-					const expression = parseExpression(token.leftBindingPower);
+					const expression = parseTree(token, [parseExpression(token.leftBindingPower)]);
 					expect(peekToken, token.matches);
 					next(); // skip over matching token
 					return parsePostfix(expression);
