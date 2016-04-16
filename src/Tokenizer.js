@@ -1,8 +1,15 @@
-import { each, map } from 'lodash';
+const each = (arr, f) => {
+	let index = -1;
+	while (++index < arr.length) {
+		if (f(arr[index]) === false) {
+			break;
+		}
+	}
+};
 
 // turn the config into functions which create tokens from input
 const getTokenizeRules = (rules) => {
-	return map(rules, (rule) => {
+	return rules.map((rule) => {
 		return (input, appendToken, skip) => {
 			const matches = rule.regex.exec(input);
 			if (matches) {

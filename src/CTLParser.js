@@ -1,4 +1,3 @@
-import { map } from 'lodash';
 import tokenize from './CTLTokenizer';
 import parser from './PrattParser';
 
@@ -19,7 +18,7 @@ const TRUE = {
 };
 
 const [_AND, _OR, _EU, _NOT, _EX, _EG] =
-	map(['&', '|', 'EU', '!', 'EX', 'EG'], operator);
+	['&', '|', 'EU', '!', 'EX', 'EG'].map(operator);
 
 const LTLOperators = ['G', 'F', 'X', 'U', 'W', 'R'];
 const isLTLOperator = (value) => {
