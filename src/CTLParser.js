@@ -1,6 +1,16 @@
 import tokenize from './CTLTokenizer';
 import parser from './PrattParser';
 
+const find = (arr, f) => {
+	let index = -1;
+	while (++index < arr.length) {
+		const result = f(arr[index]);
+		if (result) {
+			return result;
+		}
+	}
+};
+
 const identity = (a) => a;
 
 const operator = (value) => {
@@ -49,7 +59,6 @@ const CTLTransformations = {
 	},
 	'AU': (node) => {
 		const [a, b] = node.subtrees;
-
 		return _OR(
 				_NOT(
 					_EU(
@@ -59,7 +68,6 @@ const CTLTransformations = {
 	},
 	'AR': (node) => {
 		const [a, b] = node.subtrees;
-
 		return _NOT(_EU(_NOT(a), _NOT(b)));
 	},
 	'AW': (node) => {
@@ -103,17 +111,30 @@ const transformNot = (node) => {
 	}
 };
 
+const verifyLTL = (node) => {
+	if (node.subtrees) {
+		return find(node.subtrees, (subtree) => {
+			if (isLTLOperator(subtree.value)) {
+				return `No matching CTL operator for LTL operator '${subtree.value}'.`;
+			}
+		}) || true;
+	}
+	else {
+		return true;
+	}
+};
+
 const symbols = {
 	'atom': {},
-	'&': { arity: 2, leftBindingPower: 30 },
-	'|': { arity: 2, leftBindingPower: 30 },
-	'->': { arity: 2, leftBindingPower: 20 },
-	'U': { arity: 2, leftBindingPower: 10 },
-	'R': { arity: 2, leftBindingPower: 10 },
-	'W': { arity: 2, leftBindingPower: 10 },
+	'&': { arity: 2, leftBindingPower: 30, verify: verifyLTL },
+	'|': { arity: 2, leftBindingPower: 30, verify: verifyLTL },
+	'->': { arity: 2, leftBindingPower: 20, verify: verifyLTL },
+	'U': { arity: 2, leftBindingPower: 10, verify: verifyLTL },
+	'R': { arity: 2, leftBindingPower: 10, verify: verifyLTL },
+	'W': { arity: 2, leftBindingPower: 10, verify: verifyLTL },
 	'E': { arity: 1, transform: transformCTL, verify: verifyCTL },
 	'A': { arity: 1, transform: transformCTL, verify: verifyCTL },
-	'!': { arity: 1, transform: transformNot },
+	'!': { arity: 1, transform: transformNot, verify: verifyLTL },
 	'F': { arity: 1 },
 	'G': { arity: 1 },
 	'X': { arity: 1 },
@@ -125,5 +146,14 @@ const parse = parser(symbols);
 
 export default (data) => {
 	const tokens = typeof data === 'string' ? tokenize(data) : data;
-	return parse(tokens);
+	const ast = parse(tokens);
+
+	if (isLTLOperator(ast.value)) {
+		throw {
+			name: 'SyntaxError',
+			message: `No matching CTL operator for LTL operator '${ast.value}'.`
+		};
+	}
+
+	return ast;
 };

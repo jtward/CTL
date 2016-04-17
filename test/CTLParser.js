@@ -375,7 +375,14 @@ describe('CTL Parser', () => {
 				return (e.name === 'SyntaxError' && e.message === 'Expected an LTL operator but found \'a\'.');
 			});
 		});
-		xit('throws an error for LTL operators without a corresponding CTL operator', () => {
+		it('throws an error for LTL operators without a corresponding CTL operator', () => {
+			assert.throws(() => {
+				CTL.parse('a & (X b)');
+			}, (e) => {
+				return (e.name === 'SyntaxError' && e.message === 'No matching CTL operator for LTL operator \'X\'.');
+			});
+		});
+		it('throws an error for top-level LTL operators', () => {
 			assert.throws(() => {
 				CTL.parse('X a');
 			}, (e) => {
