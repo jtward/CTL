@@ -1,4 +1,4 @@
-import { intersection, isEmpty, filter, map, some, union, without, xor } from 'lodash-es';
+import { includes, intersection, isEmpty, filter, map, some, union, without, xor } from 'lodash-es';
 import parse from './CTLParser';
 
 const equal = (a, b) => {
