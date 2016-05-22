@@ -1,6 +1,6 @@
 import assert from 'assert';
 import { each } from 'lodash';
-import CTL from '../src/CTL';
+import CTL from '../lib/es6/CTL';
 
 const aAtom = (value) => {
 	return (ast) => {

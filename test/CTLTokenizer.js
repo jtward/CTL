@@ -1,5 +1,5 @@
 import assert from 'assert';
-import CTL from '../src/CTL';
+import CTL from '../lib/es6/CTL';
 
 const tokenize = CTL.tokenize;
 

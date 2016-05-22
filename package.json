@@ -7,11 +7,12 @@
     "test": "test"
   },
   "scripts": {
+    "lint": "eslint src test; exit 0",
+    "compile-es6": "rollup -c rollup.config.js",
+    "compile-es5": "mkdir -p lib/es5 && babel lib/es6/CTL.js -o lib/es5/CTL.js",
+    "compile": "npm run compile-es6 && npm run compile-es5",
     "test": "mocha --compilers js:babel-register",
-    "compile-min": "browserify src/CTL.js -t [ babelify --presets [ es2015-rollup ] ] -t [ uglifyify ] | uglifyjs2 -c -o lib/CTL.min.js",
-    "compile": "browserify src/CTL.js -t [ babelify --presets [ es2015-rollup ] ] | uglifyjs2 -b -o lib/CTL.js",
-    "compile-es6": "rollup src/CTL.js -o lib/CTL.es6.js",
-    "lint": "eslint src test; exit 0"
+    "build": "npm run lint && npm run compile && npm run test"
   },
   "repository": {
     "type": "git",
@@ -24,22 +25,14 @@
   },
   "homepage": "https://github.com/jtward/CTL#readme",
   "devDependencies": {
-    "babel": "^6.3.26",
-    "babel-cli": "^6.4.5",
-    "babel-plugin-lodash": "^2.0.1",
-    "babel-plugin-transform-es2015-modules-commonjs": "^6.7.4",
-    "babel-polyfill": "^6.3.14",
-    "babel-preset-es2015": "^6.3.13",
-    "babel-preset-es2015-rollup": "^1.1.1",
+    "babel-cli": "^6.9.0",
+    "babel-plugin-transform-es2015-modules-umd": "^6.8.0",
+    "babel-preset-es2015": "^6.9.0",
     "babel-register": "^6.4.3",
-    "babelify": "^7.2.0",
-    "browserify": "^13.0.0",
-    "eslint": "^2.2.0",
-    "lodash": "^4.2.1",
+    "eslint": "^2.9.0",
+    "lodash-es": "^4.12.0",
     "mocha": "^2.4.5",
-    "rollup": "^0.25.7",
-    "rollup-plugin-babel": "^2.4.0",
-    "uglify-js2": "^2.1.11",
-    "uglifyify": "^3.0.1"
+    "rollup": "^0.26.3",
+    "rollup-plugin-node-resolve": "^1.5.0"
   }
 }

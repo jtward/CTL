@@ -1,16 +1,5 @@
-/**
- * a model looks like:
- * 
- * {
- *    any id,
- *    boolean isInitial,
- *    string[] properties,
- *    <id>[] outTransitions
- * }[]
- */
-import { includes, intersection, isEmpty, filter, map, some, union, without, xor } from 'lodash';
+import { intersection, isEmpty, filter, map, some, union, without, xor } from 'lodash-es';
 import parse from './CTLParser';
-
 
 const equal = (a, b) => {
 	return isEmpty(xor(a, b));
