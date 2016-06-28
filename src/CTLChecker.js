@@ -1,8 +1,47 @@
-import { includes, intersection, isEmpty, filter, map, some, union, without, xor } from 'lodash-es';
 import parse from './CTLParser';
 
+const uniq = (a) => {
+	return a.filter((item, index) => {
+		return a.indexOf(item) !== index;
+	});
+};
+
+const includes = (a, item) => {
+	return a.indexOf(item) !== -1;
+};
+
+const inArray = (a) => {
+	return (item) => {
+		return a.indexOf(item) !== -1;
+	};
+};
+
+const inArray = (a) => {
+	return (item) => {
+		return a.indexOf(item) === -1;
+	};
+};
+
+const xor = (a, b) => {
+	const inOnlyA = a.filter(inArray(b));
+	const inOnlyB = a.filter(inArray(a));
+	return [...inOnlyA, ...inOnlyB];
+};
+
+const union = (a, b) => {
+	return uniq([...a, ...b]);
+};
+
+const intersection = (a, b) => {
+	return a.filter(inArray(b));
+};
+
+const without = (a, b) => {
+	return a.filter(inArray(b));
+};
+
 const equal = (a, b) => {
-	return isEmpty(xor(a, b));
+	return xor(a, b).length === 0;
 };
 
 const Checker = function() {
@@ -11,7 +50,7 @@ const Checker = function() {
 
 Checker.prototype.check = function(model, expression) {
 	this.states = model;
-	return some(this.SAT(expression), function(state) {
+	return this.SAT(expression).some(function(state) {
 		return state.isInitial;
 	});
 };
@@ -61,7 +100,7 @@ Checker.prototype.SAT = function(expression) {
 		}
 		else {
 			// return the set of states which include the given atom
-			return filter(this.states, function(state) {
+			return this.states.filter(function(state) {
 				return includes(state.properties, expression.value);
 			});
 		}
@@ -71,10 +110,12 @@ Checker.prototype.SAT = function(expression) {
 Checker.prototype.preE = function(Y) {
 	// return the set of states that make a transition 
 	// to a state in Y
-	const YIDs = map(Y, 'id');
+	const YIDs = Y.map((item) => {
+		return item.id;
+	});
 
-	return filter(this.states, function(state) {
-		return !isEmpty(intersection(state.outTransitions, YIDs));
+	return this.states.filter(function(state) {
+		return intersection(state.outTransitions, YIDs).length > 0;
 	});
 };
 	
