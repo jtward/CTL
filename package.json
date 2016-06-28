@@ -8,9 +8,7 @@
   },
   "scripts": {
     "lint": "eslint src test; exit 0",
-    "compile-es6": "rollup -c rollup.config.js",
-    "compile-es5": "mkdir -p lib/es5 && babel lib/es6/CTL.js -o lib/es5/CTL.js",
-    "compile": "npm run compile-es6 && npm run compile-es5",
+    "compile": "rollup -c rollup.config.js",
     "test": "mocha --compilers js:babel-register",
     "build": "npm run lint && npm run compile && npm run test"
   },
@@ -25,9 +23,7 @@
   },
   "homepage": "https://github.com/jtward/CTL#readme",
   "devDependencies": {
-    "babel-cli": "^6.9.0",
     "babel-plugin-transform-es2015-modules-umd": "^6.8.0",
-    "babel-preset-es2015": "^6.9.0",
     "babel-register": "^6.4.3",
     "eslint": "^2.9.0",
     "lodash-es": "^4.12.0",

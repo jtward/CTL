@@ -6,5 +6,5 @@ export default {
 	plugins: [
 		nodeResolve({ jsnext: true })
 	],
-	dest: 'lib/es6/CTL.js'
+	dest: 'lib/CTL.js'
 };
