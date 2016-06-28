@@ -1,16 +1,6 @@
 import tokenize from './CTLTokenizer';
 import parser from './PrattParser';
 
-const find = (arr, f) => {
-	let index = -1;
-	while (++index < arr.length) {
-		const result = f(arr[index]);
-		if (result) {
-			return result;
-		}
-	}
-};
-
 const identity = (a) => a;
 
 const operator = (value) => {
@@ -113,11 +103,16 @@ const transformNot = (node) => {
 
 const verifyLTL = (node) => {
 	if (node.subtrees) {
-		return find(node.subtrees, (subtree) => {
-			if (isLTLOperator(subtree.value)) {
-				return `No matching CTL operator for LTL operator '${subtree.value}'.`;
-			}
-		}) || true;
+		const LTLOperator = node.subtrees.find((subtree) => {
+			return isLTLOperator(subtree.value);
+		});
+
+		if (LTLOperator) {
+			return `No matching CTL operator for LTL operator '${LTLOperator.value}'.`;
+		}
+		else {
+			return true;
+		}
 	}
 	else {
 		return true;
