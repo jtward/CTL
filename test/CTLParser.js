@@ -1,5 +1,5 @@
 import assert from 'assert';
-import { each } from 'lodash';
+import { each, map } from 'lodash';
 import CTL from '../lib/CTL';
 
 const aAtom = (value) => {
@@ -39,6 +39,12 @@ const aEU = opAsserter(2, 'EU');
 const unaryOperators = [aNot, aEX, aEG];
 const infixBinaryOperators = [aOr, aAnd, aImplies];
 const prefixBinaryOperators = [aEU];
+
+const stripLocationData = (syntaxTree) => {
+	syntaxTree.subtrees = map(syntaxTree.subtrees, stripLocationData);
+	syntaxTree.loc = undefined;
+	return syntaxTree;
+};
 
 describe('CTL Parser', () => {
 	it('is exported', () => {
@@ -262,10 +268,10 @@ describe('CTL Parser', () => {
 			const c = aAtom(atomC);
 
 			const ast1 = CTL.parse(`E(${atomA} R ${atomB} | ${atomC})`);
-			assert.deepEqual(ast1, CTL.parse(`E(${atomA} R (${atomB} | ${atomC}))`));
+			assert.deepEqual(stripLocationData(ast1), stripLocationData(CTL.parse(`E(${atomA} R (${atomB} | ${atomC}))`)));
 
 			const ast2 = CTL.parse(`E(${atomA} | ${atomB} R ${atomC})`);
-			assert.deepEqual(ast2, CTL.parse(`E((${atomA} | ${atomB}) R ${atomC})`));
+			assert.deepEqual(stripLocationData(ast2), stripLocationData(CTL.parse(`E((${atomA} | ${atomB}) R ${atomC})`)));
 		});
 
 		it('binds EX tighter than implication', () => {
@@ -319,10 +325,10 @@ describe('CTL Parser', () => {
 			const atomC = 'c';
 
 			const ast1 = CTL.parse(`E(${atomA} -> ${atomB} R ${atomC})`);
-			assert.deepEqual(ast1, CTL.parse(`E((${atomA} -> ${atomB}) R ${atomC})`));
+			assert.deepEqual(stripLocationData(ast1), stripLocationData(CTL.parse(`E((${atomA} -> ${atomB}) R ${atomC})`)));
 
 			const ast2 = CTL.parse(`E(${atomA} R ${atomB} -> ${atomC})`);
-			assert.deepEqual(ast2, CTL.parse(`E(${atomA} R (${atomB} -> ${atomC}))`));
+			assert.deepEqual(stripLocationData(ast2), stripLocationData(CTL.parse(`E(${atomA} R (${atomB} -> ${atomC}))`)));
 		});
 
 		it('binds implication tighter than EW', () => {
@@ -331,10 +337,10 @@ describe('CTL Parser', () => {
 			const atomC = 'c';
 
 			const ast1 = CTL.parse(`E(${atomA} -> ${atomB} W ${atomC})`);
-			assert.deepEqual(ast1, CTL.parse(`E((${atomA} -> ${atomB}) W ${atomC})`));
+			assert.deepEqual(stripLocationData(ast1), stripLocationData(CTL.parse(`E((${atomA} -> ${atomB}) W ${atomC})`)));
 
 			const ast2 = CTL.parse(`E(${atomA} W ${atomB} -> ${atomC})`);
-			assert.deepEqual(ast2, CTL.parse(`E(${atomA} W (${atomB} -> ${atomC}))`));
+			assert.deepEqual(stripLocationData(ast2), stripLocationData(CTL.parse(`E(${atomA} W (${atomB} -> ${atomC}))`)));
 		});
 	});
 	describe('errors', () => {

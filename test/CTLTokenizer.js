@@ -21,7 +21,17 @@ describe('tokenizer', function() {
 			const tokens = Array.from(tokenize('a'));
 			assert.deepEqual(tokens[0], {
 				type: 'atom',
-				value: 'a'
+				value: 'a',
+				loc: {
+					start: {
+						line: 0,
+						column: 0
+					},
+					end: {
+						line: 0,
+						column: 1
+					}
+				}
 			});
 		});
 
@@ -29,7 +39,17 @@ describe('tokenizer', function() {
 			const tokens = Array.from(tokenize('"a"'));
 			assert.deepEqual(tokens[0], {
 				type: 'atom',
-				value: 'a'
+				value: 'a',
+				loc: {
+					start: {
+						line: 0,
+						column: 0
+					},
+					end: {
+						line: 0,
+						column: 3
+					}
+				}
 			});
 		});
 
@@ -37,7 +57,17 @@ describe('tokenizer', function() {
 			const tokens = Array.from(tokenize('\\T'));
 			assert.deepEqual(tokens[0], {
 				type: 'atom',
-				value: '\\T'
+				value: '\\T',
+				loc: {
+					start: {
+						line: 0,
+						column: 0
+					},
+					end: {
+						line: 0,
+						column: 2
+					}
+				}
 			});
 		});
 
@@ -45,7 +75,17 @@ describe('tokenizer', function() {
 			const tokens = Array.from(tokenize('T'));
 			assert.deepEqual(tokens[0], {
 				type: 'atom',
-				value: 'T'
+				value: 'T',
+				loc: {
+					start: {
+						line: 0,
+						column: 0
+					},
+					end: {
+						line: 0,
+						column: 1
+					}
+				}
 			});
 		});
 
@@ -85,7 +125,17 @@ describe('tokenizer', function() {
 			const tokens = Array.from(tokenize('!'));
 			assert.deepEqual(tokens[0], {
 				type: 'operator',
-				value: '!'
+				value: '!',
+				loc: {
+					start: {
+						line: 0,
+						column: 0
+					},
+					end: {
+						line: 0,
+						column: 1
+					}
+				}
 			});
 		});
 
@@ -93,7 +143,17 @@ describe('tokenizer', function() {
 			const tokens = Array.from(tokenize('|'));
 			assert.deepEqual(tokens[0], {
 				type: 'operator',
-				value: '|'
+				value: '|',
+				loc: {
+					start: {
+						line: 0,
+						column: 0
+					},
+					end: {
+						line: 0,
+						column: 1
+					}
+				}
 			});
 		});
 
@@ -101,7 +161,17 @@ describe('tokenizer', function() {
 			const tokens = Array.from(tokenize('->'));
 			assert.deepEqual(tokens[0], {
 				type: 'operator',
-				value: '->'
+				value: '->',
+				loc: {
+					start: {
+						line: 0,
+						column: 0
+					},
+					end: {
+						line: 0,
+						column: 2
+					}
+				}
 			});
 		});
 	});

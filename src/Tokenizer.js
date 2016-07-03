@@ -1,3 +1,4 @@
+// lodash-like version of each which stops if the iteratee returns false
 const each = (arr, f) => {
 	let index = -1;
 	while (++index < arr.length) {
@@ -13,10 +14,8 @@ const getTokenizeRules = (rules) => {
 		return (input, appendToken, skip) => {
 			const matches = rule.regex.exec(input);
 			if (matches) {
-				if (rule.type) {
-					appendToken(rule.type, matches[rule.valueCaptureGroup || 0]);
-				}
-				skip(matches[0].length);
+				const token = rule.type ? appendToken(rule.type, matches[rule.valueCaptureGroup || 0]) : undefined;
+				skip(matches[0], token);
 			}
 		};
 	});
@@ -26,21 +25,50 @@ export default (rules) => {
 	const tokenizeRules = getTokenizeRules(rules);
 
 	return (input) => {
-	
+
 		const output = [];
+		let line = 0;
+		let column = 0;
 		let didTokenize = false;
 
 		const appendToken = (type, value) => {
 			didTokenize = true;
-			output.push({
+
+			const token = {
 				type,
-				value
-			});
+				value,
+				loc: {
+					start: {
+						line,
+						column
+					}
+				}
+			};
+
+			output.push(token);
+			return token;
 		};
 
-		const skip = (n) => {
-			didTokenize = didTokenize || n > 0;
-			input = input.slice(n);
+		const skip = (value, token) => {
+			for (const char of value) {
+				if (char === '\n') {
+					line += 1;
+					column = 0;
+				}
+				else {
+					column += 1;
+				}
+			}
+
+			if (token) {
+				token.loc.end = {
+					line,
+					column
+				};
+			}
+
+			didTokenize = didTokenize || value.length > 0;
+			input = input.slice(value.length);
 		};
 
 		const tokenize = (rule) => {

@@ -58,10 +58,11 @@ const expect = (token, expectedId) => {
 	}
 };
 
-const parseTree = ({ id, value, transform, verify }, subtrees) => {
+const parseTree = ({ id, value, loc, transform, verify }, subtrees) => {
 	const node = {
 		id,
 		value,
+		loc,
 		subtrees
 	};
 
@@ -89,7 +90,7 @@ const parser = (symbols) => {
 				peekToken = END;
 			}
 			else {
-				const { type, value } = tokens.shift();
+				const { type, value, loc } = tokens.shift();
 				const symbol = symbols[type === 'operator' ? value : type];
 
 				peekToken = {
@@ -104,7 +105,8 @@ const parser = (symbols) => {
 					unary: symbol.unary,
 					rightAssociative: symbol.rightAssociative,
 					transform: symbol.transform,
-					verify: symbol.verify
+					verify: symbol.verify,
+					loc
 				};
 			}
 			return token;
