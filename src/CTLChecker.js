@@ -16,12 +16,6 @@ const inArray = (a) => {
 	};
 };
 
-const inArray = (a) => {
-	return (item) => {
-		return a.indexOf(item) === -1;
-	};
-};
-
 const xor = (a, b) => {
 	const inOnlyA = a.filter(inArray(b));
 	const inOnlyB = a.filter(inArray(a));

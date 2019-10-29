@@ -9,7 +9,7 @@
   "scripts": {
     "lint": "eslint src test; exit 0",
     "compile": "rollup -c rollup.config.js",
-    "test": "mocha --compilers js:babel-register",
+    "test": "mocha --require babel-core/register",
     "build": "npm run lint && npm run compile && npm run test"
   },
   "repository": {
@@ -26,7 +26,7 @@
     "babel-plugin-transform-es2015-modules-umd": "^6.8.0",
     "babel-register": "^6.4.3",
     "eslint": "^2.9.0",
-    "mocha": "^2.4.5",
+    "mocha": "^6.2.2",
     "rollup": "^0.26.3"
   }
 }
