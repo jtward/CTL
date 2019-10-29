@@ -6,13 +6,9 @@ const uniq = (a) => {
 	});
 };
 
-const includes = (a, item) => {
-	return a.indexOf(item) !== -1;
-};
-
 const inArray = (a) => {
 	return (item) => {
-		return a.indexOf(item) !== -1;
+		return a.includes(item);
 	};
 };
 
@@ -95,7 +91,7 @@ Checker.prototype.SAT = function(expression) {
 		else {
 			// return the set of states which include the given atom
 			return this.states.filter(function(state) {
-				return includes(state.properties, expression.value);
+				return state.properties.includes(expression.value);
 			});
 		}
 	}

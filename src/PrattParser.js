@@ -6,17 +6,12 @@ const times = (n, f) => {
 };
 
 const mapValues = (obj, f) => {
-	const result = {};
 	const keys = Object.keys(obj);
-	const length = keys.length;
 
-	let index = -1;
-	while (++index < length) {
-		const key = keys[index];
+	return keys.reduce((result, key) => {
 		result[key] = f(obj[key], key);
-	}
-
-	return result;
+		return result;
+	}, {});
 };
 
 const identity = (a) => a;

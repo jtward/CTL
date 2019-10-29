@@ -22,7 +22,7 @@ const [_AND, _OR, _EU, _NOT, _EX, _EG] =
 
 const LTLOperators = ['G', 'F', 'X', 'U', 'W', 'R'];
 const isLTLOperator = (value) => {
-	return LTLOperators.indexOf(value) !== -1;
+	return LTLOperators.includes(value);
 };
 
 const CTLTransformations = {
