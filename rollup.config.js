@@ -1,6 +1,7 @@
-import { rollup } from 'rollup';
-
 export default {
-	entry: 'src/CTL.js',
-	dest: 'lib/CTL.js'
+	input: 'src/CTL.js',
+	output: {
+		file: 'lib/CTL.js',
+		format: 'esm'
+	}
 };

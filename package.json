@@ -23,10 +23,10 @@
   },
   "homepage": "https://github.com/jtward/CTL#readme",
   "devDependencies": {
-    "babel-plugin-transform-es2015-modules-umd": "^6.8.0",
-    "babel-register": "^6.4.3",
-    "eslint": "^2.9.0",
+    "babel-plugin-transform-es2015-modules-umd": "^6.24.1",
+    "babel-register": "^6.26.0",
+    "eslint": "^6.6.0",
     "mocha": "^6.2.2",
-    "rollup": "^0.26.3"
+    "rollup": "^1.26.0"
   }
 }

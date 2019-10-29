@@ -49,12 +49,13 @@ const CTLTransformations = {
 	},
 	'AU': (node) => {
 		const [a, b] = node.subtrees;
-		return _OR(
+		return (
+			_OR(
 				_NOT(
 					_EU(
 						_NOT(b),
 						_AND(_NOT(a), _NOT(b)))),
-				_EG(_NOT(b)));
+				_EG(_NOT(b))));
 	},
 	'AR': (node) => {
 		const [a, b] = node.subtrees;
