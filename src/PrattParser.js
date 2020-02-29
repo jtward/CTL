@@ -5,15 +5,6 @@ const times = (n, f) => {
 	}
 };
 
-const mapValues = (obj, f) => {
-	const keys = Object.keys(obj);
-
-	return keys.reduce((result, key) => {
-		result[key] = f(obj[key], key);
-		return result;
-	}, {});
-};
-
 const identity = (a) => a;
 const valid = () => true;
 
@@ -21,21 +12,6 @@ const syntaxError = (message) => {
 	return {
 		name: 'SyntaxError',
 		message
-	};
-};
-
-const toSymbol = ({ leftBindingPower = 0, arity = 0, matches, prefix = false, postfix = false, unary = false, rightAssociative = false, transform = identity, verify = valid }, id) => {
-	return {
-		id,
-		leftBindingPower,
-		arity,
-		matches,
-		prefix,
-		postfix,
-		unary,
-		rightAssociative,
-		transform,
-		verify
 	};
 };
 
@@ -187,6 +163,25 @@ const parser = (symbols) => {
 	};
 };
 
-export default (symbols) => {
-	return parser(mapValues(symbols, toSymbol));
+export default (inputSymbols) => {
+	const toSymbol = ({ leftBindingPower = 0, arity = 0, matches, prefix = false, postfix = false, unary = false, rightAssociative = false, transform = identity, verify = valid }, id) => {
+		return {
+			id,
+			leftBindingPower,
+			arity,
+			matches,
+			prefix,
+			postfix,
+			unary,
+			rightAssociative,
+			transform,
+			verify
+		};
+	};
+
+	const symbols = Object.fromEntries(
+		Object.entries(inputSymbols).map(
+			([key, value]) => [key, toSymbol(value, key)]));
+
+	return parser(symbols);
 };
