@@ -9,7 +9,7 @@
   "scripts": {
     "lint": "eslint src test; exit 0",
     "compile": "rollup -c rollup.config.js",
-    "test": "mocha --require babel-core/register",
+    "test": "mocha --require @babel/register",
     "build": "npm run lint && npm run compile && npm run test"
   },
   "repository": {
@@ -23,10 +23,11 @@
   },
   "homepage": "https://github.com/jtward/CTL#readme",
   "devDependencies": {
-    "babel-plugin-transform-es2015-modules-umd": "^6.24.1",
-    "babel-register": "^6.26.0",
+    "@babel/core": "^7.8.6",
+    "@babel/plugin-transform-modules-umd": "^7.8.3",
+    "@babel/register": "^7.8.6",
     "eslint": "^6.6.0",
-    "mocha": "^6.2.2",
-    "rollup": "^1.26.0"
+    "mocha": "^7.1.0",
+    "rollup": "^1.32.0"
   }
 }
