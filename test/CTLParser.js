@@ -1,6 +1,5 @@
 import assert from 'assert';
-import { each, map } from 'lodash';
-import CTL from '../lib/CTL';
+import CTL from '../lib/CTL.js';
 
 const aAtom = (value) => {
 	return (ast) => {
@@ -13,7 +12,7 @@ const opAsserter = (arity, value) => {
 	const asserter = (...asserts) => {
 		return (ast) => {
 			assert.equal(ast.value, value);
-			each(asserts, (asserter, index) => {
+			asserts.forEach((asserter, index) => {
 				if (typeof asserter === 'function') {
 					asserter(ast.subtrees[index]);
 				}
@@ -41,7 +40,7 @@ const infixBinaryOperators = [aOr, aAnd, aImplies];
 const prefixBinaryOperators = [aEU];
 
 const stripLocationData = (syntaxTree) => {
-	syntaxTree.subtrees = map(syntaxTree.subtrees, stripLocationData);
+	syntaxTree.subtrees = syntaxTree.subtrees?.map(stripLocationData) || undefined;
 	syntaxTree.loc = undefined;
 	return syntaxTree;
 };
@@ -67,7 +66,7 @@ describe('CTL Parser', () => {
 	});
 
 	it('parses unary operators', () => {
-		each(unaryOperators, (operator) => {
+		unaryOperators.forEach((operator) => {
 			const atom = 'foo';
 			const ast = CTL.parse(`${operator.value} ${atom}`);
 			operator(aAtom(atom))(ast);
@@ -75,7 +74,7 @@ describe('CTL Parser', () => {
 	});
 
 	it('parses infix binary operators', () => {
-		each(infixBinaryOperators, (operator) => {
+		infixBinaryOperators.forEach((operator) => {
 			const leftAtom = 'a';
 			const rightAtom = 'b';
 			const ast = CTL.parse(`${leftAtom} ${operator.value} ${rightAtom}`);

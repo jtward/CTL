@@ -2,6 +2,7 @@
   "name": "ctl-checker",
   "version": "0.1.0",
   "description": "A CTL model checker",
+  "type": "module",
   "main": "index.js",
   "directories": {
     "test": "test"
@@ -9,7 +10,7 @@
   "scripts": {
     "lint": "eslint src test; exit 0",
     "compile": "rollup -c rollup.config.js",
-    "test": "mocha --require @babel/register",
+    "test": "mocha",
     "build": "npm run lint && npm run compile && npm run test"
   },
   "repository": {
@@ -23,11 +24,8 @@
   },
   "homepage": "https://github.com/jtward/CTL#readme",
   "devDependencies": {
-    "@babel/core": "^7.8.6",
-    "@babel/plugin-transform-modules-umd": "^7.8.3",
-    "@babel/register": "^7.8.6",
-    "eslint": "^6.6.0",
-    "mocha": "^7.1.0",
-    "rollup": "^1.32.0"
+    "eslint": "^9.21.0",
+    "mocha": "^11.1.0",
+    "rollup": "^4.34.9"
   }
 }
