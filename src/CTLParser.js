@@ -1,5 +1,5 @@
 import tokenize from './CTLTokenizer';
-import parser from './PrattParser';
+import { expressionParser } from './PrattParser';
 
 const identity = (a) => a;
 
@@ -138,7 +138,7 @@ const symbols = {
 	')': {}
 };
 
-const parse = parser(symbols);
+const parse = expressionParser(symbols);
 
 export default (data) => {
 	const tokens = typeof data === 'string' ? tokenize(data) : data;

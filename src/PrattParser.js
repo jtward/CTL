@@ -46,7 +46,7 @@ const parseTree = ({ id, value, loc, transform, verify }, subtrees) => {
 	}
 };
 
-const parser = (symbols) => {
+const parseExpression = (symbols) => {
 	return (tokens) => {
 		let peekToken, done;
 
@@ -163,25 +163,25 @@ const parser = (symbols) => {
 	};
 };
 
-export default (inputSymbols) => {
-	const toSymbol = ({ leftBindingPower = 0, arity = 0, matches, prefix = false, postfix = false, unary = false, rightAssociative = false, transform = identity, verify = valid }, id) => {
-		return {
-			id,
-			leftBindingPower,
-			arity,
-			matches,
-			prefix,
-			postfix,
-			unary,
-			rightAssociative,
-			transform,
-			verify
-		};
+const toSymbol = ({ leftBindingPower = 0, arity = 0, matches, prefix = false, postfix = false, unary = false, rightAssociative = false, transform = identity, verify = valid }, id) => {
+	return {
+		id,
+		leftBindingPower,
+		arity,
+		matches,
+		prefix,
+		postfix,
+		unary,
+		rightAssociative,
+		transform,
+		verify
 	};
+};
 
+export const expressionParser = (inputSymbols) => {
 	const symbols = Object.fromEntries(
 		Object.entries(inputSymbols).map(
 			([key, value]) => [key, toSymbol(value, key)]));
 
-	return parser(symbols);
+	return parseExpression(symbols);
 };
