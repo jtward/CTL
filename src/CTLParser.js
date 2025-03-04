@@ -128,13 +128,13 @@ const symbols = {
 	'U': { arity: 2, leftBindingPower: 10, verify: verifyLTL },
 	'R': { arity: 2, leftBindingPower: 10, verify: verifyLTL },
 	'W': { arity: 2, leftBindingPower: 10, verify: verifyLTL },
-	'E': { arity: 1, transform: transformCTL, verify: verifyCTL },
-	'A': { arity: 1, transform: transformCTL, verify: verifyCTL },
-	'!': { arity: 1, transform: transformNot, verify: verifyLTL },
-	'F': { arity: 1 },
-	'G': { arity: 1 },
-	'X': { arity: 1 },
-	'(': { arity: 1, leftBindingPower: 0, matches: ')', transform: transformParen },
+	'E': { arity: 1, prefix: true, leftBindingPower: 50, transform: transformCTL, verify: verifyCTL },
+	'A': { arity: 1, prefix: true, leftBindingPower: 50, transform: transformCTL, verify: verifyCTL },
+	'!': { arity: 1, prefix: true, leftBindingPower: 40, transform: transformNot, verify: verifyLTL },
+	'F': { arity: 1, prefix: true, leftBindingPower: 40 },
+	'G': { arity: 1, prefix: true, leftBindingPower: 40 },
+	'X': { arity: 1, prefix: true, leftBindingPower: 40 },
+	'(': { arity: 1, prefix: true, leftBindingPower: 0, matches: ')', transform: transformParen },
 	')': {}
 };
 
