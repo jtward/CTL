@@ -1,5 +1,5 @@
 import tokenize from './CTLTokenizer';
-import { expressionParser } from './PrattParser';
+import { expressionParser } from 'generalpratt';
 
 const identity = (a) => a;
 

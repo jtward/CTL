@@ -27,5 +27,8 @@
     "eslint": "^9.21.0",
     "mocha": "^11.1.0",
     "rollup": "^4.34.9"
+  },
+  "dependencies": {
+    "generalpratt": "^0.0.1"
   }
 }
